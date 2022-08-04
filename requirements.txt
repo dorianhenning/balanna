@@ -1,0 +1,3 @@
+numpy
+trimesh[easy]>=3.5.0
+pyglet>=1.5.21
