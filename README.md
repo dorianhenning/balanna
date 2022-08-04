@@ -48,3 +48,8 @@ Features:
   - [ ] posture/shape estimation
 
 
+## TODO
+- visualization:
+  - scene with markers (pointcloud)
+  - moshed model
+  - image (potentially synced)
