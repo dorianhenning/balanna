@@ -1,0 +1,9 @@
+# Common File Extensions that shouldn't be added
+*.swp
+*.swo
+*.pkl
+*.npz
+*.npy
+*.pyc
+*.pt
+*.vim
