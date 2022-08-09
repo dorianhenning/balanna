@@ -1,213 +1,62 @@
-# This script is extended from https://github.com/wkentaro/morefusion/blob/main/morefusion/extra/_trimesh/display_scenes.py
-
+# Extended from https://github.com/wkentaro/morefusion/blob/main/morefusion/extra/_trimesh/display_scenes.py
+# Significant speed limitations in original version, as described in
+# https://stackoverflow.com/questions/53255392/pyglet-clock-schedule-significant-function-calling-speed-limitation
+import enum
 import math
-import types
 
-import numpy as np
 import pyglet
-import trimesh
 import trimesh.viewer
-import trimesh.transformations as tf
-
-from .utils.opengl import numpy_to_image, from_opengl_transform
 
 
-def _get_tile_shape(num: int, hw_ratio: float = 1.0):
-    r_num = int(round(math.sqrt(num / hw_ratio)))  # weighted by wh_ratio
-    c_num = 0
-    while r_num * c_num < num:
-        c_num += 1
-    while (r_num - 1) * c_num >= num:
-        r_num -= 1
-    return r_num, c_num
+class display_scenes(trimesh.viewer.windowed.SceneViewer):
+    # TODO: re-add support for rotation around scene
+    # TODO: re-add support for multiple tiles
+    # TODO: re-add support for window height and width (or full-screen?)
+    # TODO: re-add support for SHIFT + N
+    class MODE(enum.Enum):
+        IDLE = 1
+        NEXT = 2
+        PLAYING = 3
 
+    def __init__(self, data, caption=None):
+        self.data = data
+        self.mode = self.MODE.IDLE
+        scene = next(data)['point_cloud']  # TODO: remove, create tile grid
+        super(display_scenes, self).__init__(
+            scene=scene,
+            callback=self.callback,
+            caption=caption,
+            start_loop=True,
+        )
 
-def display_scenes(
-    data,
-    height: int = 960,
-    width: int = 1280,
-    tile=None,
-    caption=None,
-    rotate: bool = False,
-    rotation_scaling: float = 1,
-):
-    import glooey
-
-    scenes = None
-    scenes_group = None
-    scenes_ggroup = None
-    if isinstance(data, types.GeneratorType):
-        next_data = next(data)
-        if isinstance(next_data, types.GeneratorType):
-            scenes_ggroup = data
-            scenes_group = next_data
-            scenes = next(next_data)
-        else:
-            scenes_group = data
-            scenes = next_data
-    else:
-        scenes = data
-
-    scenes.pop("__clear__", False)
-
-    if tile is None:
-        nrow, ncol = _get_tile_shape(len(scenes), hw_ratio=height / width)
-    else:
-        nrow, ncol = tile
-
-    configs = [
-        pyglet.gl.Config(
-            sample_buffers=1, samples=4, depth_size=24, double_buffer=True
-        ),
-        pyglet.gl.Config(double_buffer=True),
-    ]
-    HEIGHT_LABEL_WIDGET = 19
-    PADDING_GRID = 1
-    for config in configs:
-        try:
-            window = pyglet.window.Window(
-                height=(height + HEIGHT_LABEL_WIDGET) * nrow,
-                width=(width + PADDING_GRID * 2) * ncol,
-                caption=caption,
-                config=config,
-            )
-            break
-        except pyglet.window.NoSuchConfigException:
-            pass
-    window.rotate = rotate
-
-    window._clear = False
-    if scenes_group:
-        window.play = False
-        window.next = False
-    window.scenes_group = scenes_group
-    window.scenes_ggroup = scenes_ggroup
-
-    def usage():
-        return """\
-Usage:
-  q: quit
-  s: play / pause
-  z: reset view
-  n: next
-  c: print camera transform
-  r: rotate view (clockwise)
-  R: rotate view (anti-clockwise)\
-"""
-
-    @window.event
-    def on_key_press(symbol, modifiers):
-        if symbol == pyglet.window.key.Q:
-            window.on_close()
-        elif window.scenes_group and symbol == pyglet.window.key.S:
-            window.play = not window.play
-        elif symbol == pyglet.window.key.Z:
-            for name in scenes:
-                if isinstance(widgets[name], trimesh.viewer.SceneWidget):
-                    widgets[name].reset_view()
-        elif symbol == pyglet.window.key.N:
-            if (
-                window.scenes_ggroup
-                and modifiers == pyglet.window.key.MOD_SHIFT
-            ):
-                try:
-                    window.scenes_group = next(window.scenes_ggroup)
-                    window.next = True
-                    window._clear = True
-                except StopIteration:
-                    return
-            else:
-                window.next = True
-        elif symbol == pyglet.window.key.C:
-            camera_transform_ids = set()
-            for key, widget in widgets.items():
-                if isinstance(widget, trimesh.viewer.SceneWidget):
-                    camera_transform_id = id(widget.scene.camera_transform)
-                    if camera_transform_id in camera_transform_ids:
-                        continue
-                    camera_transform_ids.add(camera_transform_id)
-                    print(f"{key}:")
-                    camera_transform = widget.scene.camera_transform
-                    print(repr(from_opengl_transform(camera_transform)))
-        elif symbol == pyglet.window.key.R:
-            # rotate camera
-            window.rotate = not window.rotate  # 0/1
-            if modifiers == pyglet.window.key.MOD_SHIFT:
-                window.rotate *= -1
-        elif symbol == pyglet.window.key.H:
-            print(usage())
-
-    def callback(dt):
-        if window.rotate:
-            for widget in widgets.values():
-                if isinstance(widget, trimesh.viewer.SceneWidget):
-                    axis = [0, 0, 1]
-                    widget.scene.camera_transform[...] = (
-                        tf.rotation_matrix(
-                            np.deg2rad(window.rotate * rotation_scaling),
-                            axis,
-                            point=widget.scene.centroid,
-                        )
-                        @ widget.scene.camera_transform
-                    )
-                    widget.view["ball"]._n_pose = widget.scene.camera_transform
+    def callback(self, scene: trimesh.scene):
+        if self.mode is self.MODE.IDLE:
             return
 
-        if window.scenes_group and (window.next or window.play):
+        elif self.mode in [self.MODE.PLAYING, self.MODE.NEXT]:
             try:
-                scenes = next(window.scenes_group)
-                clear = scenes.get("__clear__", False) or window._clear
-                window._clear = False
-                for key, widget in widgets.items():
-                    scene = scenes[key]
-                    if isinstance(widget, trimesh.viewer.SceneWidget):
-                        assert isinstance(scene, trimesh.Scene)
-                        if clear:
-                            widget.clear()
-                            widget.scene = scene
-                        else:
-                            widget.scene.geometry.update(scene.geometry)
-                            widget.scene.graph.load(scene.graph.to_edgelist())  # <- necessary to load new geometry
-                        widget.scene.camera_transform[
-                            ...
-                        ] = scene.camera_transform
-                        widget.view[
-                            "ball"
-                        ]._n_pose = widget.scene.camera_transform
-                        widget._draw()
-                    elif isinstance(widget, glooey.Image):
-                        widget.set_image(numpy_to_image(scene))
+                self.scene = next(self.data)['point_cloud']
             except StopIteration:
-                print("Reached the end of the scenes")
-                window.play = False
-            window.next = False
+                print("End reached")
+                self.mode = self.MODE.IDLE
 
-    gui = glooey.Gui(window)
-    grid = glooey.Grid()
-    grid.set_padding(PADDING_GRID)
+            # If the mode was NEXT, set to IDLE as the next view has been rendered.
+            if self.mode is self.MODE.NEXT:
+                self.mode = self.MODE.IDLE
 
-    widgets = {}
-    trackball = None
-    for i, (name, scene) in enumerate(scenes.items()):
-        vbox = glooey.VBox()
-        vbox.add(glooey.Label(text=name, color=(255,) * 3), size=0)
-        if isinstance(scene, trimesh.Scene):
-            widgets[name] = trimesh.viewer.SceneWidget(scene)
-            if trackball is None:
-                trackball = widgets[name].view["ball"]
+    def on_key_press(self, symbol, modifiers):
+        if symbol == pyglet.window.key.Q:
+            self.close()
+        elif symbol == pyglet.window.key.H:
+            print("Usage:",
+                  "\n\tq: quit",
+                  "\n\ts: play / pause",
+                  "\n\tn: next",
+                  "\n\tc: print camera transform")
+        elif symbol == pyglet.window.key.S:
+            if self.mode is self.MODE.PLAYING:
+                self.mode = self.MODE.IDLE
             else:
-                widgets[name].view["ball"] = trackball
-        elif isinstance(scene, np.ndarray):
-            widgets[name] = glooey.Image(
-                numpy_to_image(scene), responsive=True
-            )
-        else:
-            raise TypeError(f"unsupported type of scene: {scene}")
-        vbox.add(widgets[name])
-        grid[i // ncol, i % ncol] = vbox
-
-    gui.add(grid)
-
-    pyglet.clock.schedule_interval(callback, 1 / 100)
-    pyglet.app.run()
-    pyglet.clock.unschedule(callback)
+                self.mode = self.MODE.PLAYING
+        elif symbol == pyglet.window.key.N:
+            self.mode = self.MODE.NEXT
