@@ -6,5 +6,8 @@
 *.npy
 *.pyc
 *.pt
-*.vim
 *.egg-info
+
+# IDE caches.
+.idea/
+*.vim

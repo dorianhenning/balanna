@@ -12,7 +12,7 @@ import trimesh.transformations as tf
 from .utils.opengl import numpy_to_image, from_opengl_transform
 
 
-def _get_tile_shape(num, hw_ratio=1):
+def _get_tile_shape(num: int, hw_ratio: float = 1.0):
     r_num = int(round(math.sqrt(num / hw_ratio)))  # weighted by wh_ratio
     c_num = 0
     while r_num * c_num < num:
@@ -24,12 +24,12 @@ def _get_tile_shape(num, hw_ratio=1):
 
 def display_scenes(
     data,
-    height=960,
-    width=1280,
+    height: int = 960,
+    width: int = 1280,
     tile=None,
     caption=None,
-    rotate=False,
-    rotation_scaling=1,
+    rotate: bool = False,
+    rotation_scaling: float = 1,
 ):
     import glooey
 
@@ -141,11 +141,6 @@ Usage:
         if window.rotate:
             for widget in widgets.values():
                 if isinstance(widget, trimesh.viewer.SceneWidget):
-                    axis = tf.transform_points(
-                        [[0, 1, 0]],
-                        widget.scene.camera_transform,
-                        translate=False,
-                    )[0]
                     axis = [0, 0, 1]
                     widget.scene.camera_transform[...] = (
                         tf.rotation_matrix(

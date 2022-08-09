@@ -1,11 +1,11 @@
 import numpy as np
 import pickle as pkl
-import trimesh
-from pathlib import Path
 import argparse
 import torch
-from typing import List, Dict, Optional, Any
-from balanna.utils.opengl import to_opengl_transform
+
+from pathlib import Path
+from typing import Dict, Any
+from balanna.trimesh import show_mesh
 from balanna.display_scenes import display_scenes
 from smplx import SMPL
 
@@ -17,6 +17,7 @@ VIEW_POINT = np.array([[-0.50392321, -0.18970999, -0.84265742, 11.00678718],
                        [-0.8501219 , -0.06367364,  0.52272213, -8.85028203],
                        [ 0.        ,  0.        ,  0.        ,  1.        ]])
 
+
 def get_body_model(batch_size: int, dtype=torch.float32):
     smpl = SMPL(SMPL_MODEL_DIR,
                 batch_size=batch_size,
@@ -25,17 +26,6 @@ def get_body_model(batch_size: int, dtype=torch.float32):
                 dtype=dtype)
     return smpl
 
-
-def trimesh_show_mesh(vertices: np.ndarray, faces: np.ndarray,
-        T_WB: np.ndarray=np.eye(4)) -> trimesh.Scene:
-    scene = trimesh.Scene()
-
-    human = trimesh.Trimesh(vertices, faces)
-    human.visual.face_colors[:, :3] = [224, 120, 120]
-    scene.add_geometry(human, transform=T_WB, node_name=f'human')
-    scene.camera_transform = to_opengl_transform(VIEW_POINT)
-
-    return scene
 
 
 def read_human_body_folder(dataset_dir: Path) -> Dict[int, np.ndarray]:
@@ -100,8 +90,7 @@ def run_all_human_bodies(opts):
         print(f'current timestamp: {ts}')
         T_WB = np.eye(4)
         T_WB[:3, 3] = human_meshes['trans'][i]
-        scene = trimesh_show_mesh(human_meshes['vertices'][i], human_meshes['faces'], T_WB)
-
+        scene = show_mesh(human_meshes['vertices'][i], human_meshes['faces'], T_WB)
         yield {'human_mesh': scene}
 
 
