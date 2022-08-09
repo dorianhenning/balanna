@@ -9,7 +9,7 @@ import trimesh
 import trimesh.viewer
 import trimesh.transformations as tf
 
-from opengl import numpy_to_image, from_opengl_transform
+from .utils.opengl import numpy_to_image, from_opengl_transform
 
 
 def _get_tile_shape(num, hw_ratio=1):
@@ -213,6 +213,6 @@ Usage:
 
     gui.add(grid)
 
-    pyglet.clock.schedule_interval(callback, 1 / 30)
+    pyglet.clock.schedule_interval(callback, 1 / 100)
     pyglet.app.run()
     pyglet.clock.unschedule(callback)
