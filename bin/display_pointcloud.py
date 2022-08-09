@@ -4,14 +4,21 @@ import trimesh
 from pathlib import Path
 import argparse
 from typing import List, Dict, Optional
-from opengl import to_opengl_transform
-from display_scenes import display_scenes
+from balanna.utils.opengl import to_opengl_transform
+from balanna.display_scenes import display_scenes
 
 
 VIEW_POINT = np.array([[-0.50392321, -0.18970999, -0.84265742, 11.00678718],
                        [ 0.15282067, -0.97977334,  0.12918999, -0.0317945 ],
                        [-0.8501219 , -0.06367364,  0.52272213, -8.85028203],
                        [ 0.        ,  0.        ,  0.        ,  1.        ]])
+VIEW_POINT = np.array([[-0.32293108, -0.94264604, -0.08446284,  1.42127091],
+                       [-0.04442971,  0.1042454 , -0.99355871, 14.2508763 ],
+                       [ 0.94537904, -0.31709832, -0.07554557,  1.13081192],
+                       [ 0.        ,  0.        ,  0.        ,  1.        ]])
+
+
+
 
 
 def read_marker_folder(dataset_dir: Path, marker_dir: str = 'markers') -> Dict[int, np.ndarray]:
@@ -22,7 +29,7 @@ def read_marker_folder(dataset_dir: Path, marker_dir: str = 'markers') -> Dict[i
     for fname in marker_fnames:
         data = np.load(fname.as_posix())
 
-        timestamp = int(data['timestamp'])
+        timestamp = str(data['timestamp'])
         pointclouds[timestamp] = data['markers']
         
     return pointclouds
