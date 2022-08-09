@@ -5,13 +5,17 @@ from pathlib import Path
 import argparse
 import torch
 from typing import List, Dict, Optional, Any
-from opengl import to_opengl_transform
-from display_scenes import display_scenes
+from balanna.utils.opengl import to_opengl_transform
+from balanna.display_scenes import display_scenes
 from smplx import SMPL
 
 
 SMPL_MODEL_DIR = Path('~/git/smpl/models/').expanduser().as_posix()
 
+VIEW_POINT = np.array([[-0.50392321, -0.18970999, -0.84265742, 11.00678718],
+                       [ 0.15282067, -0.97977334,  0.12918999, -0.0317945 ],
+                       [-0.8501219 , -0.06367364,  0.52272213, -8.85028203],
+                       [ 0.        ,  0.        ,  0.        ,  1.        ]])
 
 def get_body_model(batch_size: int, dtype=torch.float32):
     smpl = SMPL(SMPL_MODEL_DIR,
@@ -39,8 +43,9 @@ def read_human_body_folder(dataset_dir: Path) -> Dict[int, np.ndarray]:
 
     human_body_parameters = {}
 
-    import pdb;pdb.set_trace()
     for fname in marker_fnames:
+        if not fname.stem.endswith('_stageii'):
+            continue
         with fname.open('rb') as f:
             data = pkl.load(f, encoding='latin1')
 
@@ -49,7 +54,7 @@ def read_human_body_folder(dataset_dir: Path) -> Dict[int, np.ndarray]:
         frame['beta'] = data['betas']
         frame['trans'] = data['trans']
 
-        timestamp = int(fname.stem)
+        timestamp = int(fname.stem.split('_')[0])
         human_body_parameters[timestamp] = frame
         
     return human_body_parameters
@@ -62,11 +67,13 @@ def prepare_human_bodies_for_trimesh(human_data: Dict[int, Dict[str, np.ndarray]
     # collate body parameters
     thetas = torch.empty(batch_size, 72)
     betas = torch.empty(batch_size, 10)
-    timestamps = torch.empty(batch_size, dtype=torch.int64)
+    timestamps = np.empty(batch_size, dtype=np.int64)
+    trans = np.empty((batch_size, 3))
     for i, (ts, fr) in enumerate(human_data.items()):
-        thetas[i] = fr['theta']
-        betas[i] = fr['beta']
+        thetas[i] = torch.from_numpy(fr['theta'])
+        betas[i] = torch.from_numpy(fr['beta'])
         timestamps[i] = ts
+        trans[i] = fr['trans']
 
     smpl_out = smpl(betas=betas, global_orient=thetas[:, :3], body_pose=thetas[:, 3:], pose2rot=True)
 
@@ -74,7 +81,7 @@ def prepare_human_bodies_for_trimesh(human_data: Dict[int, Dict[str, np.ndarray]
             'joints': smpl_out.joints.cpu().numpy(),
             'faces': smpl.faces,
             'timestamps': timestamps,
-            'trans': human_data['trans']}
+            'trans': trans}
 
 
 def _parse_args():
