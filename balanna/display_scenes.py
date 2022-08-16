@@ -2,7 +2,6 @@
 # Significant speed limitations in original version, as described in
 # https://stackoverflow.com/questions/53255392/pyglet-clock-schedule-significant-function-calling-speed-limitation
 import enum
-import glooey
 import math
 import numpy as np
 import pyglet
@@ -45,6 +44,7 @@ class display_scenes(pyglet.window.Window):
             caption=caption
         )
 
+        import glooey
         gui = glooey.Gui(self)
         grid = glooey.Grid()
         grid.set_padding(self.PADDING_GRID)
@@ -83,6 +83,7 @@ class display_scenes(pyglet.window.Window):
 
         elif self.mode in [self.MODE.PLAYING, self.MODE.NEXT]:
             try:
+                import glooey
                 scene_set = next(self.data)
                 for key, widget in self.widgets.items():
                     scene = scene_set[key]
