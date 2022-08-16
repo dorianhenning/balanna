@@ -58,6 +58,7 @@ def show_point_cloud(
 def show_axis(
     transform: np.ndarray,
     name: Optional[str] = None,
+    size: float = 0.04,
     scene: Optional[trimesh.Scene] = None
 ) -> trimesh.Scene:
     """Add coordinate axis as trimesh mesh to the scene.
@@ -65,11 +66,13 @@ def show_axis(
     Args:
         transform: axis pose as transformation matrix (4, 4).
         name: scene node name of axis mesh.
+        size: axis origin size and radius.
         scene: scene to add axis to, if None a new scene will be created.
     """
     if scene is None:
         scene = trimesh.Scene()
     if transform.shape != (4, 4):
         raise ValueError(f"Expected single transformation matrix, got {transform.shape}")
-    scene.add_geometry(trimesh.creation.axis(), transform=transform, node_name=name)
+    axis_mesh = trimesh.creation.axis(size)
+    scene.add_geometry(axis_mesh, transform=transform, node_name=name)
     return scene
