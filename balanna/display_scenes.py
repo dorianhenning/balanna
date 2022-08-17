@@ -77,6 +77,16 @@ class display_scenes(pyglet.window.Window):
         pyglet.clock.schedule(self.callback)
         pyglet.app.run()
 
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        key_under_mouse = self.get_widget_under_mouse(x, y)
+        if key_under_mouse and isinstance(self.widgets[key_under_mouse], trimesh.viewer.SceneWidget):
+            self.redraw_views(key_under_mouse)
+
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+        key_under_mouse = self.get_widget_under_mouse(x, y)
+        if key_under_mouse and isinstance(self.widgets[key_under_mouse], trimesh.viewer.SceneWidget):
+            self.redraw_views(key_under_mouse)
+
     def callback(self, dt: float):
         if self.mode is self.MODE.IDLE:
             return
@@ -128,10 +138,27 @@ class display_scenes(pyglet.window.Window):
         elif symbol == pyglet.window.key.Z:
             self.reset_views()
 
+    def get_widget_under_mouse(self, x: int, y: int) -> Optional[str]:
+        for key, widget in self.widgets.items():
+            if widget.is_under_mouse(x, y):
+                return key
+        return None
+
+    def redraw_views(self, reference_key: str):
+        if not isinstance(self.widgets[reference_key], trimesh.viewer.SceneWidget):
+            return
+        tf = self.widgets[reference_key].scene.camera_transform
+        for key, widget in self._iter_scene_widgets():
+            widget.scene.camera_transform = tf
+
     def reset_views(self):
+        for key, widget in self._iter_scene_widgets():
+            widget.reset_view()
+
+    def _iter_scene_widgets(self):
         for key, widget in self.widgets.items():
             if isinstance(widget, trimesh.viewer.SceneWidget):
-                widget.reset_view()
+                yield key, widget
 
     @staticmethod
     def _get_tile_shape(num: int, hw_ratio: float = 1.0):
