@@ -2,7 +2,7 @@ import numpy as np
 import trimesh
 import trimesh.creation
 
-from typing import Optional
+from typing import List, Optional, Union
 
 
 def show_mesh(
@@ -75,4 +75,23 @@ def show_axis(
         raise ValueError(f"Expected single transformation matrix, got {transform.shape}")
     axis_mesh = trimesh.creation.axis(size)
     scene.add_geometry(axis_mesh, transform=transform, node_name=name)
+    return scene
+
+
+def show_axes(
+    transforms: Union[List[np.ndarray], np.ndarray],
+    sizes: Optional[List[float]] = None,
+    scene: Optional[trimesh.Scene] = None
+):
+    """Add coordinate axes for multiple frames to the scene.
+
+    Args:
+        transforms: axes poses as transformation matrices (N, 4, 4 or list of (4, 4)).
+        sizes: axes sizes.
+        scene: scene to add axis to, if None a new scene will be created.
+    """
+    if sizes is None:
+        sizes = [0.04] * len(transforms)
+    for tf, size in zip(transforms, sizes):
+        scene = show_axis(tf, size=size, scene=scene)
     return scene
