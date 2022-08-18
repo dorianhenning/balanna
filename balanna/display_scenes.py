@@ -1,171 +1,112 @@
-# Extended from https://github.com/wkentaro/morefusion/blob/main/morefusion/extra/_trimesh/display_scenes.py
-# Significant speed limitations in original version, as described in
-# https://stackoverflow.com/questions/53255392/pyglet-clock-schedule-significant-function-calling-speed-limitation
-import enum
-import math
 import numpy as np
-import pyglet
 import trimesh.viewer
+import vedo
 
-from balanna.utils.opengl import to_opengl_image
-from typing import Optional, Tuple
+from PIL import Image, ImageQt
+from PyQt5 import Qt
+from typing import Any, Dict, Iterable, Optional
+from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 
-class display_scenes(pyglet.window.Window):
-    # TODO: re-add support for rotation around scene
-    class MODE(enum.Enum):
-        IDLE = 1
-        NEXT = 2
-        PLAYING = 3
+SceneDictType = Dict[str, Any]
 
-    HEIGHT_LABEL_WIDGET = 19
-    PADDING_GRID = 1
 
-    def __init__(
-        self,
-        data,
-        caption: Optional[str] = None,
-        height: int = 480,
-        width: int = 920,
-        tile: Optional[Tuple[int, int]] = None
-    ):
-        self.data = data
-        self.mode = self.MODE.IDLE
+class MainWindow(Qt.QMainWindow):
 
-        scene_set = next(data)
-        if tile is None:
-            n_rows, n_cols = self._get_tile_shape(len(scene_set), hw_ratio=height / width)
-        else:
-            n_rows, n_cols = tile
-
-        super(display_scenes, self).__init__(
-            height=height,
-            width=width,
-            caption=caption
-        )
-
-        import glooey
-        gui = glooey.Gui(self)
-        grid = glooey.Grid()
-        grid.set_padding(self.PADDING_GRID)
-        self.widgets = {}
-        trackball = None
-        for i, (name, scene) in enumerate(scene_set.items()):
-            vbox = glooey.VBox()
-
-            # Add label for each widget with the label being the key of the scene dictionary.
-            vbox.add(glooey.Label(text=name, color=(255,) * 3), size=0)
-
-            if isinstance(scene, trimesh.Scene):
-                self.widgets[name] = trimesh.viewer.SceneWidget(scene)
-                # Share the same trackball over all 3D scene widgets.
-                if trackball is None:
-                    trackball = self.widgets[name].view["ball"]
-                else:
-                    self.widgets[name].view["ball"] = trackball
-
-            elif isinstance(scene, np.ndarray):
-                self.widgets[name] = glooey.Image(to_opengl_image(scene), responsive=True)
-
-            else:
-                raise TypeError(f"unsupported type of scene: {scene}")
-            vbox.add(self.widgets[name])
-            grid[i // n_cols, i % n_cols] = vbox
-        gui.add(grid)
-
-        # Launch app main loop, i.e. iteratively call callback.
-        pyglet.clock.schedule(self.callback)
-        pyglet.app.run()
-
-    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
-        key_under_mouse = self.get_widget_under_mouse(x, y)
-        if key_under_mouse and isinstance(self.widgets[key_under_mouse], trimesh.viewer.SceneWidget):
-            self.redraw_views(key_under_mouse)
-
-    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
-        key_under_mouse = self.get_widget_under_mouse(x, y)
-        if key_under_mouse and isinstance(self.widgets[key_under_mouse], trimesh.viewer.SceneWidget):
-            self.redraw_views(key_under_mouse)
-
-    def callback(self, dt: float):
-        if self.mode is self.MODE.IDLE:
+    def __init__(self, scene_iterator: Iterable[SceneDictType], fps: float, parent: Qt.QWidget = None):
+        Qt.QMainWindow.__init__(self, parent)
+        frame = Qt.QFrame()
+        vl = Qt.QVBoxLayout()
+        self.scene_iterator = scene_iterator
+        self.fps = fps
+        scene_dict = self.get_next_scene_dict()
+        if scene_dict is None:
             return
 
-        elif self.mode in [self.MODE.PLAYING, self.MODE.NEXT]:
-            try:
-                import glooey
-                scene_set = next(self.data)
-                for key, widget in self.widgets.items():
-                    scene = scene_set[key]
-                    if isinstance(widget, trimesh.viewer.SceneWidget):
-                        assert isinstance(scene, trimesh.Scene)
-                        cam_tf = widget.scene.camera_transform
-                        widget.clear()
-                        scene.camera_transform = cam_tf  # re-store camera transform of last frame
-                        widget.scene = scene
-                        widget.view["ball"]._n_pose = cam_tf
-                        widget._draw()
-                    elif isinstance(widget, glooey.Image):
-                        widget.set_image(to_opengl_image(scene))
-            except StopIteration:
-                self.mode = self.MODE.IDLE
+        image_keys = [key for key, value in scene_dict.items() if isinstance(value, np.ndarray)]
+        vl1 = Qt.QHBoxLayout()
+        self.image_frame_dict = dict()
+        for key in image_keys:
+            self.image_frame_dict[key] = Qt.QLabel()
+            vl1.addWidget(self.image_frame_dict[key])
+        vl.addLayout(vl1)
 
-            # If the mode was NEXT, set to IDLE as the next view has been rendered.
-            if self.mode is self.MODE.NEXT:
-                self.mode = self.MODE.IDLE
+        scene_keys = [key for key, value in scene_dict.items() if isinstance(value, trimesh.Scene)]
+        self.scene_key_dict = {key: i for i, key in enumerate(scene_keys)}
+        self.vtkWidget = QVTKRenderWindowInteractor(frame)
+        vl2 = Qt.QHBoxLayout()
+        vl2.addWidget(self.vtkWidget)
+        self.vp = vedo.Plotter(qtWidget=self.vtkWidget, N=len(scene_keys))
+        self.vp.addCallback('KeyPress', self.on_key)
+        self.vp.show()
+        vl.addLayout(vl2)
 
-    def on_close(self):
-        super(display_scenes, self).on_close()
-        pyglet.clock.unschedule(self.callback)
+        frame.setLayout(vl)
+        self.setCentralWidget(frame)
+        self.show()
 
-    def on_key_press(self, symbol, modifiers):
-        if symbol == pyglet.window.key.Q:
-            self.close()
-        elif symbol == pyglet.window.key.H:
+        self.render_(scene_dict, resetcam=True)
+        self.timer = Qt.QTimer(self)
+        self.timer.timeout.connect(self.render_next_scene)
+
+    def render_next_scene(self, resetcam: bool = False) -> None:
+        scene_dict = self.get_next_scene_dict()
+        if scene_dict is not None:
+            self.render_(scene_dict, resetcam=resetcam)
+        elif self.timer.isActive():
+            self.timer.stop()
+
+    def render_(self, scene_dict: Dict[str, Any], resetcam: bool = False):
+        for key, element in scene_dict.items():
+            if isinstance(element, trimesh.Scene) and key in self.scene_key_dict:
+                at = self.scene_key_dict[key]
+                meshes_vedo = [vedo.trimesh2vedo(m) for m in element.geometry.values()]
+                self.vp.clear(at=at)
+                self.vp.show(meshes_vedo, at=at, bg="white", resetcam=resetcam)
+
+            elif isinstance(element, np.ndarray) and key in self.image_frame_dict:
+                image_mode = "RGB" if len(element.shape) == 3 else "L"
+                img = Image.fromarray(element, mode=image_mode)
+                qt_img = ImageQt.ImageQt(img)
+                self.image_frame_dict[key].setPixmap(Qt.QPixmap.fromImage(qt_img))
+
+            else:
+                continue
+
+    def on_key(self, event_dict) -> None:
+        key_pressed = event_dict["keyPressed"]
+        if key_pressed == "s":
+            if self.timer.isActive():
+                self.timer.stop()
+            else:
+                self.timer.start(1 / self.fps)
+        elif key_pressed == "n":
+            self.update()
+        elif key_pressed == "z":
+            self.vp.render(resetcam=True)
+        elif key_pressed == "h":
             print("Usage:",
                   "\n\tq: quit",
                   "\n\ts: play / pause",
                   "\n\tn: next",
-                  "\n\tz: reset view",
-                  "\n\tc: print camera transform")
-        elif symbol == pyglet.window.key.S:
-            if self.mode is self.MODE.PLAYING:
-                self.mode = self.MODE.IDLE
-            else:
-                self.mode = self.MODE.PLAYING
-        elif symbol == pyglet.window.key.N:
-            self.mode = self.MODE.NEXT
-        elif symbol == pyglet.window.key.Z:
-            self.reset_views()
+                  "\n\tz: reset view")
+        elif key_pressed == "q":
+            self.close()
 
-    def get_widget_under_mouse(self, x: int, y: int) -> Optional[str]:
-        for key, widget in self.widgets.items():
-            if widget.is_under_mouse(x, y):
-                return key
-        return None
+    def get_next_scene_dict(self) -> Optional[SceneDictType]:
+        try:
+            return next(self.scene_iterator)
+        except StopIteration:
+            return None
 
-    def redraw_views(self, reference_key: str):
-        if not isinstance(self.widgets[reference_key], trimesh.viewer.SceneWidget):
-            return
-        tf = self.widgets[reference_key].scene.camera_transform
-        for key, widget in self._iter_scene_widgets():
-            widget.scene.camera_transform = tf
+    def on_close(self):
+        self.vtkWidget.close()
+        for key, widget in self.image_frame_dict.items():
+            widget.close()
 
-    def reset_views(self):
-        for key, widget in self._iter_scene_widgets():
-            widget.reset_view()
 
-    def _iter_scene_widgets(self):
-        for key, widget in self.widgets.items():
-            if isinstance(widget, trimesh.viewer.SceneWidget):
-                yield key, widget
-
-    @staticmethod
-    def _get_tile_shape(num: int, hw_ratio: float = 1.0):
-        r_num = int(round(math.sqrt(num / hw_ratio)))  # weighted by wh_ratio
-        c_num = 0
-        while r_num * c_num < num:
-            c_num += 1
-        while (r_num - 1) * c_num >= num:
-            r_num -= 1
-        return r_num, c_num
+def display_scenes(scene_iterator: Iterable[SceneDictType], fps: float = 30.0):
+    app = Qt.QApplication([])
+    window = MainWindow(scene_iterator, fps=fps)
+    app.aboutToQuit.connect(window.on_close)
+    app.exec_()

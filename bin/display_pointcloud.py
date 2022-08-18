@@ -6,13 +6,6 @@ from typing import Dict
 
 from balanna.trimesh import show_point_cloud
 from balanna.display_scenes import display_scenes
-from balanna.utils.opengl import to_opengl_transform
-
-
-VIEW_POINT = np.array([[-0.32293108, -0.94264604, -0.08446284,  1.42127091],
-                       [-0.04442971,  0.1042454 , -0.99355871, 14.2508763 ],
-                       [ 0.94537904, -0.31709832, -0.07554557,  1.13081192],
-                       [ 0.        ,  0.        ,  0.        ,  1.        ]])
 
 
 def read_marker_folder(dataset_dir: Path, marker_dir: str = 'markers') -> Dict[int, np.ndarray]:
@@ -36,7 +29,6 @@ def run_all_point_clouds(directory: Path):
     for ts, markers in pcs.items():
         print(f'current timestamp: {ts}')
         scene = show_point_cloud(markers)
-        scene.camera_transform = to_opengl_transform(VIEW_POINT)
         yield {'point_cloud': scene}
 
 

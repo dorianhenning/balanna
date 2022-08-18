@@ -23,9 +23,10 @@ def show_mesh(
     """
     if scene is None:
         scene = trimesh.Scene()
-    human = trimesh.Trimesh(vertices, faces)
-    human.visual.face_colors[:, :3] = [224, 120, 120]
-    scene.add_geometry(human, transform=transform, node_name=name)
+    mesh = trimesh.Trimesh(vertices, faces)
+    mesh.visual.face_colors[:, :3] = [224, 120, 120]
+    mesh = mesh.apply_transform(transform)
+    scene.add_geometry(mesh, node_name=name)
     return scene
 
 
@@ -51,14 +52,15 @@ def show_point_cloud(
     if transform.shape != (4, 4):
         raise ValueError(f"Expected single transformation matrix, got {transform.shape}")
     pc = trimesh.points.PointCloud(vertices.reshape(-1, 3))
-    scene.add_geometry(pc, transform=transform, node_name=name)
+    pc = pc.apply_transform(transform)
+    scene.add_geometry(pc, node_name=name)
     return scene
 
 
 def show_axis(
     transform: np.ndarray,
     name: Optional[str] = None,
-    size: float = 0.04,
+    size: float = 0.06,
     scene: Optional[trimesh.Scene] = None
 ) -> trimesh.Scene:
     """Add coordinate axis as trimesh mesh to the scene.
@@ -73,8 +75,8 @@ def show_axis(
         scene = trimesh.Scene()
     if transform.shape != (4, 4):
         raise ValueError(f"Expected single transformation matrix, got {transform.shape}")
-    axis_mesh = trimesh.creation.axis(size)
-    scene.add_geometry(axis_mesh, transform=transform, node_name=name)
+    axis_mesh = trimesh.creation.axis(size, transform=transform, axis_radius=size/3)
+    scene.add_geometry(axis_mesh, node_name=name)
     return scene
 
 
