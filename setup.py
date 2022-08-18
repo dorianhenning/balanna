@@ -4,8 +4,8 @@ from setuptools import setup, find_packages
 REQUIRED = [
     'numpy>=1.21',
     'trimesh[easy]>=3.5.0',
-    'pyglet>=1.5',
-    'glooey==0.3.6'
+    'vedo',
+    'PyQt5'
 ]
 
 setup(
