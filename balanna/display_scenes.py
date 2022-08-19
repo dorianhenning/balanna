@@ -81,7 +81,7 @@ class MainWindow(Qt.QMainWindow):
             else:
                 self.timer.start(int(1 / self.fps * 1000))  # in milliseconds
         elif key_pressed == "n":
-            self.update()
+            self.render_next_scene()
         elif key_pressed == "z":
             self.vp.render(resetcam=True)
         elif key_pressed == "h":
