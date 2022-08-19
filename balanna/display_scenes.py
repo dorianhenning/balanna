@@ -79,7 +79,7 @@ class MainWindow(Qt.QMainWindow):
             if self.timer.isActive():
                 self.timer.stop()
             else:
-                self.timer.start(1 / self.fps)
+                self.timer.start(int(1 / self.fps * 1000))  # in milliseconds
         elif key_pressed == "n":
             self.update()
         elif key_pressed == "z":
