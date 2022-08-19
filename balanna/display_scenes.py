@@ -13,10 +13,19 @@ SceneDictType = Dict[str, Any]
 
 class MainWindow(Qt.QMainWindow):
 
-    def __init__(self, scene_iterator: Iterable[SceneDictType], fps: float, parent: Qt.QWidget = None):
+    def __init__(
+        self,
+        scene_iterator: Iterable[SceneDictType],
+        fps: float,
+        horizontal: bool = True,
+        parent: Qt.QWidget = None
+    ):
         Qt.QMainWindow.__init__(self, parent)
         frame = Qt.QFrame()
-        vl = Qt.QVBoxLayout()
+        if horizontal:
+            vl = Qt.QHBoxLayout()
+        else:
+            vl = Qt.QVBoxLayout()
         self.scene_iterator = scene_iterator
         self.fps = fps
         scene_dict = self.get_next_scene_dict()
@@ -105,8 +114,8 @@ class MainWindow(Qt.QMainWindow):
             widget.close()
 
 
-def display_scenes(scene_iterator: Iterable[SceneDictType], fps: float = 30.0):
+def display_scenes(scene_iterator: Iterable[SceneDictType], horizontal: bool = True, fps: float = 30.0):
     app = Qt.QApplication([])
-    window = MainWindow(scene_iterator, fps=fps)
+    window = MainWindow(scene_iterator, fps=fps, horizontal=horizontal)
     app.aboutToQuit.connect(window.on_close)
     app.exec_()
