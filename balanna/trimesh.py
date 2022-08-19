@@ -10,7 +10,8 @@ def show_mesh(
     faces: np.ndarray,
     transform: np.ndarray = np.eye(4),
     name: Optional[str] = None,
-    scene: Optional[trimesh.Scene] = None
+    scene: Optional[trimesh.Scene] = None,
+    camera: Optional[np.ndarray] = None
 ) -> trimesh.Scene:
     """Create a mesh from vertices and faces and add it to the scene.
 
