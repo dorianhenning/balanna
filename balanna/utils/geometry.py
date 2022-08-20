@@ -19,6 +19,14 @@ def pose_to_trimesh_tf(position: np.ndarray, quaternion: np.ndarray, q_order: st
     return T
 
 
+def to_opengl_transform(transform=None):
+    if transform is None:
+        transform = np.eye(4)
+    return transform @ trimesh.transformations.rotation_matrix(
+        np.deg2rad(-180), [1, 0, 0]
+    )
+
+
 def transform_to_vtkcamera(transform: np.ndarray) -> Dict[str, List[float]]:
     if transform.shape != (4, 4):
         raise ValueError(f"Expected single transformation matrix, got {transform.shape}")

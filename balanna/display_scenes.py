@@ -1,11 +1,13 @@
 import numpy as np
 import trimesh.viewer
 import vedo
+import vtk
 
 from PIL import Image, ImageQt
 from PyQt5 import Qt
 from typing import Any, Dict, Iterable, Optional
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+from .utils.geometry import transform_to_vtkcamera
 
 
 SceneDictType = Dict[str, Any]
@@ -61,8 +63,18 @@ class MainWindow(Qt.QMainWindow):
             if isinstance(element, trimesh.Scene) and key in self.scene_key_dict:
                 at = self.scene_key_dict[key]
                 meshes_vedo = [vedo.trimesh2vedo(m) for m in element.geometry.values()]
+
+                tf = element.camera_transform
+                R = tf[:3, :3]
+                pos = tf[:3, 3]
+                camera = vtk.vtkCamera()
+                camera.SetViewUp(*(-R[1, :3]))
+                camera.SetFocalPoint(*(pos-R[2, :3]))
+                camera.SetPosition(*pos)
+                self.vp.renderer.SetActiveCamera(camera)
+
                 self.vp.clear(at=at)
-                self.vp.show(meshes_vedo, at=at, bg="white", resetcam=resetcam)
+                self.vp.show(meshes_vedo, at=at, bg="white", resetcam=False)
 
             elif isinstance(element, np.ndarray) and key in self.image_frame_dict:
                 image_mode = "RGB" if len(element.shape) == 3 else "L"
