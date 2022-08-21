@@ -65,7 +65,7 @@ class MainWindow(Qt.QMainWindow):
         elif self.timer.isActive():
             self.timer.stop()
 
-    def render_(self, scene_dict: Dict[str, Any], resetcam: bool = False):
+    def render_(self, scene_dict: SceneDictType, resetcam: bool = False):
         for key, element in scene_dict.items():
             if isinstance(element, trimesh.Scene) and key in self.scene_key_dict:
                 at = self.scene_key_dict[key]
