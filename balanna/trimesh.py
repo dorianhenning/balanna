@@ -1,8 +1,11 @@
 import numpy as np
 import trimesh
 import trimesh.creation
+import vedo
 
 from typing import List, Optional, Union
+
+import vedo
 
 
 def show_mesh(
@@ -33,6 +36,9 @@ def show_mesh(
 def show_point_cloud(
     vertices: np.ndarray,
     transform: np.ndarray = np.eye(4),
+    colors: Optional[np.ndarray] = None,
+    alpha: float = 1.0,
+    radius: float = 4,
     name: Optional[str] = None,
     scene: Optional[trimesh.Scene] = None
 ) -> trimesh.Scene:
@@ -44,6 +50,9 @@ def show_point_cloud(
     Args:
         vertices: point cloud to visualize (..., 3).
         transform: transform point cloud before adding it to scene (4, 4).
+        colors: RGB color for each point (..., 3).
+        alpha: opacity color value.
+        radius: point radius in pixels.
         name: scene node name of point cloud mesh.
         scene: scene to add point cloud mesh to, if None a new scene will be created.
     """
@@ -51,8 +60,16 @@ def show_point_cloud(
         scene = trimesh.Scene()
     if transform.shape != (4, 4):
         raise ValueError(f"Expected single transformation matrix, got {transform.shape}")
-    pc = trimesh.points.PointCloud(vertices.reshape(-1, 3))
-    pc = pc.apply_transform(transform)
+
+    vertices_flat = vertices.reshape(-1, 3)
+    if colors is None:
+        colors = np.zeros((len(vertices_flat), 3))
+        colors[:, 0] = 255  # default = red
+    colors = np.concatenate((colors, np.ones((len(vertices_flat), 1)) * alpha * 255), axis=1)
+
+    pc = vedo.Points(vertices_flat, r=radius, c=colors, alpha=alpha)
+    pc = pc.applyTransform(transform)
+    pc.metadata = {}  # hack to add it to trimesh scene
     scene.add_geometry(pc, node_name=name)
     return scene
 

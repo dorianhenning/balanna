@@ -69,7 +69,8 @@ class MainWindow(Qt.QMainWindow):
         for key, element in scene_dict.items():
             if isinstance(element, trimesh.Scene) and key in self.scene_key_dict:
                 at = self.scene_key_dict[key]
-                meshes_vedo = [vedo.trimesh2vedo(m) for m in element.geometry.values()]
+                meshes_vedo = [vedo.trimesh2vedo(m) if isinstance(m, trimesh.Trimesh) else m
+                               for m in element.geometry.values()]
                 self.vp.clear(at=at)
                 self.vp.show(meshes_vedo, at=at, bg="white", resetcam=resetcam)
 
