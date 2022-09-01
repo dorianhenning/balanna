@@ -5,7 +5,8 @@ REQUIRED = [
     'numpy>=1.21',
     'trimesh[easy]>=3.5.0',
     'vedo',
-    'PyQt5'
+    'PyQt5',
+    # 'opencv-python-headless'
 ]
 
 setup(

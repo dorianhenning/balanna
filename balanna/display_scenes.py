@@ -18,6 +18,7 @@ class MainWindow(Qt.QMainWindow):
         scene_iterator: Iterable[SceneDictType],
         fps: float,
         horizontal: bool = True,
+        loop: bool = True,
         parent: Qt.QWidget = None
     ):
         Qt.QMainWindow.__init__(self, parent)
@@ -57,6 +58,8 @@ class MainWindow(Qt.QMainWindow):
         self.render_(scene_dict, resetcam=True)
         self.timer = Qt.QTimer(self)
         self.timer.timeout.connect(self.render_next_scene)
+        if loop:
+            self.toggle_looping()
 
     def render_next_scene(self, resetcam: bool = False) -> None:
         scene_dict = self.get_next_scene_dict()
@@ -93,10 +96,7 @@ class MainWindow(Qt.QMainWindow):
     def on_key(self, event_dict) -> None:
         key_pressed = event_dict["keyPressed"]
         if key_pressed == "s":
-            if self.timer.isActive():
-                self.timer.stop()
-            else:
-                self.timer.start(int(1 / self.fps * 1000))  # in milliseconds
+            self.toggle_looping()
         elif key_pressed == "n":
             self.render_next_scene()
         elif key_pressed == "z":
@@ -112,9 +112,15 @@ class MainWindow(Qt.QMainWindow):
 
     def get_next_scene_dict(self) -> Optional[SceneDictType]:
         try:
-            return next(self.scene_iterator)
+            return next(self.scene_iterator)  # noqa
         except StopIteration:
             return None
+
+    def toggle_looping(self):
+        if self.timer.isActive():
+            self.timer.stop()
+        else:
+            self.timer.start(int(1 / self.fps * 1000))  # in milliseconds
 
     def on_close(self):
         self.vtkWidget.close()
@@ -122,8 +128,24 @@ class MainWindow(Qt.QMainWindow):
             widget.close()
 
 
-def display_scenes(scene_iterator: Iterable[SceneDictType], horizontal: bool = True, fps: float = 30.0):
+def display_scenes(
+    scene_iterator: Iterable[SceneDictType],
+    horizontal: bool = True,
+    loop: bool = False,
+    fps: float = 30.0
+):
+    """Display scenes stored in scene iterator as PyQt app.
+
+    The scene iterator yields a dictionary that describes the elements of the scene, one dictionary per frame.
+    Currently, images (np.array) and 3D scenes (trimesh.Scene) are supported.
+
+    Args:
+        scene_iterator: iterator function to get the scene dictionaries.
+        horizontal: window orientation, horizontal or vertical stacking.
+        loop: start looping from beginning.
+        fps: frames (i.e. scenes) per second for looping.
+    """
     app = Qt.QApplication([])
-    window = MainWindow(scene_iterator, fps=fps, horizontal=horizontal)
+    window = MainWindow(scene_iterator, fps=fps, horizontal=horizontal, loop=loop)
     app.aboutToQuit.connect(window.on_close)
     app.exec_()
