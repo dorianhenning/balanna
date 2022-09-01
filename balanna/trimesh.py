@@ -37,7 +37,6 @@ def show_point_cloud(
     vertices: np.ndarray,
     transform: np.ndarray = np.eye(4),
     colors: Optional[np.ndarray] = None,
-    radius: float = 4,
     name: Optional[str] = None,
     scene: Optional[trimesh.Scene] = None
 ) -> trimesh.Scene:
@@ -49,7 +48,7 @@ def show_point_cloud(
     Args:
         vertices: point cloud to visualize (..., 3).
         transform: transform point cloud before adding it to scene (4, 4).
-        colors: RGBA color for each point (..., 4).
+        colors: RGB color for each point (..., 3) as uint8 color 0...255..
         radius: point radius in pixels.
         name: scene node name of point cloud mesh.
         scene: scene to add point cloud mesh to, if None a new scene will be created.
@@ -61,13 +60,10 @@ def show_point_cloud(
 
     vertices_flat = vertices.reshape(-1, 3)
     if colors is None:
-        colors = np.zeros((len(vertices_flat), 4))
+        colors = np.zeros((len(vertices_flat), 3))
         colors[:, 0] = 255  # default = red
-
-    pc = vedo.Points(vertices_flat, r=radius, c=colors)
-    pc = pc.applyTransform(transform)
-    pc.metadata = {}  # hack to add it to trimesh scene
-    scene.add_geometry(pc, node_name=name)
+    pc = trimesh.PointCloud(vertices_flat, colors=colors)
+    scene.add_geometry(pc, transform=transform, node_name=name)
     return scene
 
 
