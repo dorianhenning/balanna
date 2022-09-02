@@ -4,7 +4,7 @@ import vedo
 
 from PIL import Image, ImageQt
 from PyQt5 import Qt
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional, Tuple
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 
@@ -13,14 +13,8 @@ SceneDictType = Dict[str, Any]
 
 class MainWindow(Qt.QMainWindow):
 
-    def __init__(
-        self,
-        scene_iterator: Iterable[SceneDictType],
-        fps: float,
-        horizontal: bool = True,
-        parent: Qt.QWidget = None
-    ):
-        Qt.QMainWindow.__init__(self, parent)
+    def __init__(self, scene_iterator: Iterable[SceneDictType], fps: float, horizontal: bool = True):
+        Qt.QMainWindow.__init__(self)
         frame = Qt.QFrame()
         if horizontal:
             vl = Qt.QHBoxLayout()
@@ -52,33 +46,46 @@ class MainWindow(Qt.QMainWindow):
 
         frame.setLayout(vl)
         self.setCentralWidget(frame)
-        self.show()
 
-        self.render_(scene_dict, resetcam=True)
+        self.scene_dict = scene_dict
         self.timer = Qt.QTimer(self)
         self.timer.timeout.connect(self.render_next_scene)
+
+        window_size = Qt.QSize(self.num_widgets * 200, 200) if horizontal else Qt.QSize(200, self.num_widgets * 200)
+        self.resize(window_size)
+        self.render_(scene_dict, resetcam=True, )
+        self.show()
+
+    def resizeEvent(self, a0: Qt.QResizeEvent) -> None:
+        dw = int(a0.size().width() / self.num_widgets)
+        dh = int(a0.size().height() / self.num_widgets)
+        self.render_(self.scene_dict, widget_size=(dw, dh))
 
     def render_next_scene(self, resetcam: bool = False) -> None:
         scene_dict = self.get_next_scene_dict()
         if scene_dict is not None:
+            self.scene_dict = scene_dict
             self.render_(scene_dict, resetcam=resetcam)
         elif self.timer.isActive():
             self.timer.stop()
 
-    def render_(self, scene_dict: SceneDictType, resetcam: bool = False):
+    def render_(self, scene_dict: SceneDictType, resetcam: bool = False, widget_size: Optional[Tuple[int, int]] = None):
         for key, element in scene_dict.items():
             if isinstance(element, trimesh.Scene) and key in self.scene_key_dict:
                 at = self.scene_key_dict[key]
                 meshes_vedo = [vedo.trimesh2vedo(m) if isinstance(m, trimesh.Trimesh) else m
                                for m in element.geometry.values()]
                 self.vp.clear(at=at)
-                self.vp.show(meshes_vedo, at=at, bg="white", resetcam=resetcam)
+                self.vp.show(meshes_vedo, at=at, bg="white", resetcam=resetcam, size=widget_size)
 
             elif isinstance(element, np.ndarray) and key in self.image_frame_dict:
                 image_mode = "RGB" if len(element.shape) == 3 else "L"
                 img = Image.fromarray(element, mode=image_mode)
                 qt_img = ImageQt.ImageQt(img)
-                self.image_frame_dict[key].setPixmap(Qt.QPixmap.fromImage(qt_img))
+                pixmap = Qt.QPixmap.fromImage(qt_img)
+                if widget_size is not None:
+                    pixmap = pixmap.scaled(*widget_size)
+                self.image_frame_dict[key].setPixmap(pixmap)
 
             else:
                 continue
@@ -114,9 +121,17 @@ class MainWindow(Qt.QMainWindow):
         for key, widget in self.image_frame_dict.items():
             widget.close()
 
+    @property
+    def num_widgets(self) -> int:
+        return len(self.centralWidget().layout().children())
+
 
 def display_scenes(scene_iterator: Iterable[SceneDictType], horizontal: bool = True, fps: float = 30.0):
     app = Qt.QApplication([])
-    window = MainWindow(scene_iterator, fps=fps, horizontal=horizontal)
+    window = MainWindow(
+        scene_iterator=scene_iterator,
+        fps=fps,
+        horizontal=horizontal,
+    )
     app.aboutToQuit.connect(window.on_close)
     app.exec_()
