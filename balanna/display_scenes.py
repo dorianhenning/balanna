@@ -95,7 +95,7 @@ class MainWindow(Qt.QMainWindow):
                 self.image_frame_dict[key].setPixmap(Qt.QPixmap.fromImage(qt_img))
 
             elif isinstance(element, str):
-                print(element)
+                print(f"{key}: {element}")
 
             else:
                 continue
