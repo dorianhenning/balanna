@@ -94,6 +94,9 @@ class MainWindow(Qt.QMainWindow):
                 qt_img = ImageQt.ImageQt(img)
                 self.image_frame_dict[key].setPixmap(Qt.QPixmap.fromImage(qt_img))
 
+            elif isinstance(element, str):
+                print(element)
+
             else:
                 continue
 
@@ -141,7 +144,7 @@ def display_scenes(
     """Display scenes stored in scene iterator as PyQt app.
 
     The scene iterator yields a dictionary that describes the elements of the scene, one dictionary per frame.
-    Currently, images (np.array) and 3D scenes (trimesh.Scene) are supported.
+    Currently, images (np.array), 3D scenes (trimesh.Scene) and strings (for prinout) are supported.
 
     Args:
         scene_iterator: iterator function to get the scene dictionaries.
