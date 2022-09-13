@@ -85,7 +85,11 @@ class MainWindow(Qt.QMainWindow):
                 self.vp.show(meshes_vedo, at=at, bg="white", resetcam=resetcam)
 
             elif isinstance(element, np.ndarray) and key in self.image_frame_dict:
-                image_mode = "RGB" if len(element.shape) == 3 else "L"
+                if len(element.shape) == 3:
+                    image_mode = "RGB"
+                    element = np.transpose(element, (1, 2, 0))  # (C, H, W) -> (H, W, C)
+                else:
+                    image_mode = "L"
                 img = Image.fromarray(element, mode=image_mode)
                 qt_img = ImageQt.ImageQt(img)
                 self.image_frame_dict[key].setPixmap(Qt.QPixmap.fromImage(qt_img))
