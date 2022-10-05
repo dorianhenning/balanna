@@ -19,6 +19,7 @@ class MainWindow(Qt.QMainWindow):
         fps: float,
         horizontal: bool = True,
         loop: bool = True,
+        show_labels: bool = False,
         parent: Qt.QWidget = None
     ):
         Qt.QMainWindow.__init__(self, parent)
@@ -29,6 +30,7 @@ class MainWindow(Qt.QMainWindow):
             vl = Qt.QVBoxLayout()
         self.scene_iterator = scene_iterator
         self.fps = fps
+        self.show_labels = show_labels
         scene_dict = self.get_next_scene_dict()
         if scene_dict is None:
             return
@@ -81,6 +83,10 @@ class MainWindow(Qt.QMainWindow):
                     else:
                         m_vedo = m
                     meshes_vedo.append(m_vedo)
+                if self.show_labels:
+                    annotation = vedo.CornerAnnotation()
+                    annotation.text(key)
+                    meshes_vedo.append(annotation)
                 self.vp.clear(at=at)
                 self.vp.show(meshes_vedo, at=at, bg="white", resetcam=resetcam)
 
@@ -139,7 +145,8 @@ def display_scenes(
     scene_iterator: Iterable[SceneDictType],
     horizontal: bool = True,
     loop: bool = False,
-    fps: float = 30.0
+    fps: float = 30.0,
+    show_labels: bool = False
 ):
     """Display scenes stored in scene iterator as PyQt app.
 
@@ -151,8 +158,9 @@ def display_scenes(
         horizontal: window orientation, horizontal or vertical stacking.
         loop: start looping from beginning.
         fps: frames (i.e. scenes) per second for looping.
+        show_labels: display the scene dict keys.
     """
     app = Qt.QApplication([])
-    window = MainWindow(scene_iterator, fps=fps, horizontal=horizontal, loop=loop)
+    window = MainWindow(scene_iterator, fps=fps, horizontal=horizontal, loop=loop, show_labels=show_labels)
     app.aboutToQuit.connect(window.on_close)
     app.exec_()

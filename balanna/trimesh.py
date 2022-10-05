@@ -1,7 +1,6 @@
 import numpy as np
 import trimesh
 import trimesh.creation
-import vedo
 
 from typing import List, Optional, Union
 
