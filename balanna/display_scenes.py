@@ -1,4 +1,6 @@
+import importlib.metadata
 import numpy as np
+import packaging.version
 import trimesh.viewer
 import vedo
 
@@ -48,7 +50,12 @@ class MainWindow(Qt.QMainWindow):
         self.vtkWidget = QVTKRenderWindowInteractor(frame)
         vl2 = Qt.QHBoxLayout()
         vl2.addWidget(self.vtkWidget)
-        self.vp = vedo.Plotter(qtWidget=self.vtkWidget, N=len(scene_keys))
+
+        vedo_version = importlib.metadata.version('vedo')
+        if packaging.version.parse(vedo_version) > packaging.version.parse('2022.3.0'):
+            self.vp = vedo.Plotter(qt_widget=self.vtkWidget, N=len(scene_keys))
+        else:
+            self.vp = vedo.Plotter(qtWidget=self.vtkWidget, N=len(scene_keys))  # noqa
         self.vp.addCallback('KeyPress', self.on_key)
         self.vp.show()
         vl.addLayout(vl2)
