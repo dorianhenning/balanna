@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 REQUIRED = [
     'numpy>=1.21',
-    'trimesh[easy]>=3.5.0',
+    'trimesh[easy]>=3.16.0',
     'vedo',
     'PyQt5',
     # 'opencv-python-headless'
@@ -17,5 +17,5 @@ setup(
     author_email='dorian.henning@gmail.com',
     packages=find_packages(),
     install_requires=REQUIRED,
-    python_requires='>=3.7'
+    python_requires='>=3.8'
 )
