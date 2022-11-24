@@ -12,7 +12,8 @@ def show_mesh(
     faces: np.ndarray,
     transform: np.ndarray = np.eye(4),
     name: Optional[str] = None,
-    scene: Optional[trimesh.Scene] = None
+    scene: Optional[trimesh.Scene] = None,
+    color: Optional[np.ndarray] = None
 ) -> trimesh.Scene:
     """Create a mesh from vertices and faces and add it to the scene.
 
@@ -26,7 +27,10 @@ def show_mesh(
     if scene is None:
         scene = trimesh.Scene()
     mesh = trimesh.Trimesh(vertices, faces)
-    mesh.visual.face_colors[:, :3] = [224, 120, 120]
+    if color is not None:
+        mesh.visual.face_colors[:, :3] = color
+    else:
+        mesh.visual.face_colors[:, :3] = [224, 120, 120]
     mesh = mesh.apply_transform(transform)
     scene.add_geometry(mesh, node_name=name)
     return scene
