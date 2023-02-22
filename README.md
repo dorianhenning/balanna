@@ -1,55 +1,19 @@
-# Visualization Package for Human Bodys and Other Stuff
+# Balanna: Easy 2D & 3D Visualizations
 
-## File Reading
+```
+import numpy as np
 
-Features:
-- [ ] `.pkl` reader for single frame data
-- [ ] `.npz` reader for single frame data
-- [ ] `.pkl` reader for multi frame data
-- [ ] `.npz` reader for multi frame data
-- [ ] `.json` reader for single frame data
-- [ ] `.json` reader for multi frame data
-- [ ] all file loading includes ground truth 6D-pose data
-- [ ] all file loading uses estimated/supplied 6D-pose data
-
-## SMPL Integration
-
-Features:
-- [ ] model loading (`torch` or `chumpy`/`numpy`?)
-- [ ] fast return of mesh vertices & joints (batch computation for sequence)
-
-## Mesh Visualization
-
-Features:
-- [ ] single frame (simple example scene)
-- [ ] single frame comparison between `N` number of resulting meshes (e.g., optimization)
-- [ ] sequence of single human mesh
-- [ ] sequence of multiple humans (next to each other, separated by max distance)
-- [ ] uncertainty coloring of mesh?
-
-## Pointcloud Visualization
-
-Features:
-- [ ] single pointcloud of mesh
-- [ ] uncertainty awareness/coloring of pointcloud
-
-## Trajectory Plotting
-
-- [ ] trajectory plotting over entire sequence
-- [ ] trajectory plotting that is growing over sequence
-- [ ] trajectory plot where the trajectory fades out (only last `N` frames)
-
-## Image Keypoint Renderings
-
-- [ ] render/projection of set of points in color
-- [ ] projection of SMPL parameters directly
-- [ ] projection of ,ultiple different estimates of
-  - [ ] camera estimation
-  - [ ] posture/shape estimation
+from balanna.trimesh import show_point_cloud
+from balanna.display_scenes import display_scenes
 
 
-## TODO
-- visualization:
-  - scene with markers (pointcloud)
-  - moshed model
-  - image (potentially synced)
+def main():
+    pcs = np.random.rand((20, 3))
+    for t in range(20):
+        scene = show_point_cloud(pcs[t])
+        yield {'point_cloud': scene}
+
+
+if __name__ == '__main__':
+    display_scenes(main())
+```
