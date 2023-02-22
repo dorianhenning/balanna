@@ -1,6 +1,7 @@
 import importlib.metadata
 import numpy as np
 import packaging.version
+import trimesh.visual
 import trimesh.viewer
 import vedo
 
@@ -85,6 +86,9 @@ class MainWindow(Qt.QMainWindow):
                 for m in element.geometry.values():
                     if isinstance(m, trimesh.Trimesh):
                         m_vedo = vedo.trimesh2vedo(m)
+                        if m.visual.kind == "vertex":
+                            face_colors = trimesh.visual.color.vertex_to_face_color(m.visual.vertex_colors, m.faces)
+                            m_vedo.cellIndividualColors(face_colors)
                     elif isinstance(m, trimesh.PointCloud):
                         m_vedo = vedo.Points(m.vertices, c=m.visual.vertex_colors)
                     else:

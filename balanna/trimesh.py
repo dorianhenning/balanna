@@ -4,8 +4,6 @@ import trimesh.creation
 
 from typing import List, Optional, Union
 
-import vedo
-
 
 def show_mesh(
     vertices: np.ndarray,
@@ -13,7 +11,8 @@ def show_mesh(
     transform: np.ndarray = np.eye(4),
     name: Optional[str] = None,
     scene: Optional[trimesh.Scene] = None,
-    color: Optional[np.ndarray] = None
+    face_color: Optional[np.ndarray] = None,
+    vertex_color: Optional[np.ndarray] = None
 ) -> trimesh.Scene:
     """Create a mesh from vertices and faces and add it to the scene.
 
@@ -23,14 +22,25 @@ def show_mesh(
         transform: transform mesh before adding it to scene (4, 4).
         name: scene node name of mesh.
         scene: scene to add mesh to, if None a new scene will be created.
+        face_color: face colors (F, 3).
+        vertex_color: vertex colors (N, 3).
     """
+    if vertex_color is not None and vertex_color.shape != vertices.shape:
+        raise ValueError(f"Invalid vertex colors, must be {vertices.shape}, got {vertex_color.shape}")
+    if vertex_color is not None and face_color is not None:
+        raise ValueError(f"Cannot set both vertex and face color")
+
     if scene is None:
         scene = trimesh.Scene()
+
     mesh = trimesh.Trimesh(vertices, faces)
-    if color is not None:
-        mesh.visual.face_colors[:, :3] = color
+    if face_color is not None:
+        mesh.visual.face_colors[:, :3] = face_color
+    elif vertex_color is not None:
+        mesh.visual.vertex_colors = vertex_color
     else:
         mesh.visual.face_colors[:, :3] = [224, 120, 120]
+
     mesh = mesh.apply_transform(transform)
     scene.add_geometry(mesh, node_name=name)
     return scene
