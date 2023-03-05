@@ -23,9 +23,9 @@ def show_mesh(
         name: scene node name of mesh.
         scene: scene to add mesh to, if None a new scene will be created.
         face_color: face colors (F, 3).
-        vertex_color: vertex colors (N, 3).
+        vertex_color: vertex colors (N, 3/4).
     """
-    if vertex_color is not None and vertex_color.shape != vertices.shape:
+    if vertex_color is not None and vertex_color.shape[:-1] != vertices.shape[:-1]:
         raise ValueError(f"Invalid vertex colors, must be {vertices.shape}, got {vertex_color.shape}")
     if vertex_color is not None and face_color is not None:
         raise ValueError(f"Cannot set both vertex and face color")
