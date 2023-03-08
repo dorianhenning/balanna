@@ -1,5 +1,11 @@
 # Balanna: Easy 2D & 3D Visualizations
 
+## Installation
+```
+pip install balanna
+```
+
+## Minimal Example
 ```
 import numpy as np
 
