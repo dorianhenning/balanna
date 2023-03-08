@@ -2,7 +2,7 @@ import numpy as np
 import trimesh
 import trimesh.creation
 
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 
 def show_mesh(
@@ -43,6 +43,75 @@ def show_mesh(
 
     mesh = mesh.apply_transform(transform)
     scene.add_geometry(mesh, node_name=name)
+    return scene
+
+
+def show_grid(
+    xy_min: float = -10.0,
+    xy_max: float = 10.0,
+    z: float = 0.0,
+    resolution: float = 1.0,
+    alpha: float = 255,
+    dark_color: Tuple[float, float, float] = (120, 120, 120),
+    light_color: Tuple[float, float, float] = (255, 255, 255),
+    transform: np.ndarray = np.eye(4),
+    scene: trimesh.Scene = None
+) -> trimesh.Scene:
+    """Create a 2D squared grid in the xy-plane, color it in a chessboard pattern and transform it accordingly.
+
+    Args:
+        xy_min: minimal coordinate in xy direction, i.e. (xy_min, xy_min).
+        xy_max: maximal coordinate in xy direction, i.e. (xy_max, xy_max).
+        z: plane height at creation.
+        resolution: cell size.
+        alpha: color alpha value for all cells.
+        dark_color: chessboard dark color.
+        light_color: chessboard light color.
+        transform: mesh transform after creation (in relation to center point (0, 0, z)).
+        scene: scene to add mesh to, if None a new scene will be created.
+    """
+    if scene is None:
+        scene = trimesh.Scene()
+
+    num_points_per_row = int((xy_max - xy_min) // resolution) + 1
+    w = num_points_per_row - 1
+    num_faces = w ** 2
+
+    # Compute vertices as 2D mesh-grid in the xy-plane. Set all z components to the given z value.
+    vertices_x, vertices_y = np.meshgrid(np.linspace(xy_min, xy_max, num_points_per_row),
+                                         np.linspace(xy_min, xy_max, num_points_per_row))
+    vertices_x = vertices_x.flatten()
+    vertices_y = vertices_y.flatten()
+    vertices = np.stack([vertices_x, vertices_y, np.ones_like(vertices_x) * z], axis=-1)
+
+    # Compute grid faces and face colors to create chessboard pattern.
+    faces = []
+    face_colors = np.zeros((num_faces, 4), dtype=np.uint8)
+    face_colors[:, -1] = alpha  # alpha value
+    sym = [light_color, dark_color]
+    face_idx = 0
+    for i in range(w):
+        for j in range(w):
+            # add face in counter-clockwise vertex order.
+            face_ij = (i * num_points_per_row + j,
+                       i * num_points_per_row + j + 1,
+                       (i + 1) * num_points_per_row + j + 1,
+                       (i + 1) * num_points_per_row + j)
+            faces.append(face_ij)
+
+            # if even number of elements in row: at beginning of row, swap colors.
+            # if odd: order is automatically swapped after finishing one row.
+            if face_idx % w == 0 and w % 2 == 0:
+                sym.reverse()
+            idx = 0 if face_idx % 2 == 0 else 1  # alternate index for chessboard pattern
+            face_colors[face_idx, :3] = sym[idx]
+
+            # Increment face index.
+            face_idx += 1
+    face_colors = np.concatenate([face_colors, face_colors])
+
+    grid = trimesh.Trimesh(vertices, faces, face_colors=face_colors)
+    scene.add_geometry(grid, transform=transform)
     return scene
 
 
