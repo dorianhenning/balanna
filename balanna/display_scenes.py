@@ -5,6 +5,7 @@ import trimesh.visual
 import trimesh.viewer
 import vedo
 
+from functools import partial
 from PIL import Image, ImageQt
 from PyQt5 import Qt
 from typing import Any, Dict, Iterable, Optional
@@ -50,18 +51,32 @@ class MainWindow(Qt.QMainWindow):
 
         scene_keys = [key for key, value in scene_dict.items() if isinstance(value, trimesh.Scene)]
         self.scene_key_dict = {key: i for i, key in enumerate(scene_keys)}
-        self.vtkWidget = QVTKRenderWindowInteractor(frame)
+        self.vps = []
+        self.vtkWidgets = []
         vl2 = Qt.QHBoxLayout()
-        vl2.addWidget(self.vtkWidget)
-
-        vedo_version = importlib.metadata.version('vedo')
-        if packaging.version.parse(vedo_version) > packaging.version.parse('2022.3.0'):
-            self.vp = vedo.Plotter(qt_widget=self.vtkWidget, N=len(scene_keys))
-        else:
-            self.vp = vedo.Plotter(qtWidget=self.vtkWidget, N=len(scene_keys))  # noqa
-        self.vp.addCallback('KeyPress', self.on_key)
-        self.vp.show()
+        for _, scene_id in self.scene_key_dict.items():
+            vtk_widget = QVTKRenderWindowInteractor(frame)
+            vl2.addWidget(vtk_widget)
+            vedo_version = importlib.metadata.version('vedo')
+            if packaging.version.parse(vedo_version) > packaging.version.parse('2022.3.0'):
+                vp = vedo.Plotter(qt_widget=vtk_widget)
+            else:
+                vp = vedo.Plotter(qtWidget=vtk_widget)  # noqa
+            vp.add_callback('LeftButtonPress', partial(self.__on_mouse_start, align_id=scene_id))
+            vp.add_callback('LeftButtonRelease', self.__on_mouse_end)
+            vp.add_callback('MiddleButtonPress', partial(self.__on_mouse_start, align_id=scene_id))
+            vp.add_callback('MiddleButtonRelease', self.__on_mouse_end)
+            vp.add_callback('MouseWheelForward', partial(self.__align_event, align_id=scene_id))
+            vp.add_callback('MouseWheelBackward', partial(self.__align_event, align_id=scene_id))
+            vp.addCallback('KeyPress', self.__on_key)
+            vp.show()
+            self.vtkWidgets.append(vtk_widget)
+            self.vps.append(vp)
         vl.addLayout(vl2)
+
+        self._mouse_timer = Qt.QTimer(self)
+        self._mouse_timer.timeout.connect(self.__align_event)
+        self._current_align_id = None
 
         frame.setLayout(vl)
         self.setCentralWidget(frame)
@@ -111,8 +126,8 @@ class MainWindow(Qt.QMainWindow):
                     view_up = - T_W_C[:3, 1]  # camera convention -> y points down
                     camera_dict = dict(pos=cam_0, focal_point=cam_1, viewup=view_up)
 
-                self.vp.clear(at=at)
-                self.vp.show(meshes_vedo, at=at, bg="white", resetcam=resetcam, camera=camera_dict)
+                self.vps[at].clear()
+                self.vps[at].show(meshes_vedo, bg="white", resetcam=resetcam, camera=camera_dict)
 
             elif isinstance(element, np.ndarray) and key in self.image_frame_dict:
                 if len(element.shape) == 3:
@@ -130,14 +145,27 @@ class MainWindow(Qt.QMainWindow):
             else:
                 continue
 
-    def on_key(self, event_dict) -> None:
+    def __align_event(self, event = None, align_id: int = None):
+        if self.num_scenes < 2:
+            return
+        if align_id is None:
+            align_id = self._current_align_id
+
+        camera = self.vps[align_id].camera
+        for k in range(self.num_scenes):
+            self.vps[k].renderer.SetActiveCamera(camera)
+            self.vps[k].render()
+
+    def __on_key(self, event_dict) -> None:
         key_pressed = event_dict["keyPressed"]
         if key_pressed == "s":
             self.toggle_looping()
         elif key_pressed == "n":
             self.render_next_scene()
         elif key_pressed == "z":
-            self.vp.render(resetcam=True)
+            if self.num_scenes > 0:
+                self.vps[0].render(resetcam=True)
+                self.__align_event(align_id=0)
         elif key_pressed == "h":
             print("Usage:",
                   "\n\tq: quit",
@@ -146,6 +174,15 @@ class MainWindow(Qt.QMainWindow):
                   "\n\tz: reset view")
         elif key_pressed == "q":
             self.close()
+
+    def __on_mouse_start(self, _, align_id: int):
+        self._current_align_id = align_id
+        self._mouse_timer.start(10)  # in milliseconds
+
+    def __on_mouse_end(self, _):
+        if self._mouse_timer.isActive():
+            self._mouse_timer.stop()
+        self._current_align_id = None
 
     def get_next_scene_dict(self) -> Optional[SceneDictType]:
         try:
@@ -160,9 +197,18 @@ class MainWindow(Qt.QMainWindow):
             self.timer.start(int(1 / self.fps * 1000))  # in milliseconds
 
     def on_close(self):
-        self.vtkWidget.close()
+        for vtk_widget in self.vtkWidgets:
+            vtk_widget.close()
         for key, widget in self.image_frame_dict.items():
             widget.close()
+
+    @property
+    def num_images(self) -> int:
+        return len(self.image_frame_dict)
+
+    @property
+    def num_scenes(self) -> int:
+        return len(self.vps)
 
 
 def display_scenes(
