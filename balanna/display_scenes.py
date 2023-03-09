@@ -23,6 +23,7 @@ class MainWindow(Qt.QMainWindow):
         horizontal: bool = True,
         loop: bool = True,
         show_labels: bool = False,
+        use_scene_cam: bool = False,
         parent: Qt.QWidget = None
     ):
         Qt.QMainWindow.__init__(self, parent)
@@ -34,6 +35,7 @@ class MainWindow(Qt.QMainWindow):
         self.scene_iterator = scene_iterator
         self.fps = fps
         self.show_labels = show_labels
+        self.use_scene_cam = use_scene_cam
         scene_dict = self.get_next_scene_dict()
         if scene_dict is None:
             return
@@ -94,12 +96,23 @@ class MainWindow(Qt.QMainWindow):
                     else:
                         m_vedo = m
                     meshes_vedo.append(m_vedo)
+
                 if self.show_labels:
                     annotation = vedo.CornerAnnotation()
                     annotation.text(key)
                     meshes_vedo.append(annotation)
+
+                camera_dict = None
+                if self.use_scene_cam:
+                    focal_distance = 1.0
+                    T_W_C = element.camera_transform
+                    cam_0 = T_W_C[:3, 3]
+                    cam_1 = cam_0 + T_W_C[:3, :3] @ np.array([0, 0, focal_distance])  # along z of camera
+                    view_up = - T_W_C[:3, 1]  # camera convention -> y points down
+                    camera_dict = dict(pos=cam_0, focal_point=cam_1, viewup=view_up)
+
                 self.vp.clear(at=at)
-                self.vp.show(meshes_vedo, at=at, bg="white", resetcam=resetcam)
+                self.vp.show(meshes_vedo, at=at, bg="white", resetcam=resetcam, camera=camera_dict)
 
             elif isinstance(element, np.ndarray) and key in self.image_frame_dict:
                 if len(element.shape) == 3:
@@ -157,7 +170,8 @@ def display_scenes(
     horizontal: bool = True,
     loop: bool = False,
     fps: float = 30.0,
-    show_labels: bool = False
+    show_labels: bool = False,
+    use_scene_cam: bool = False
 ):
     """Display scenes stored in scene iterator as PyQt app.
 
@@ -170,8 +184,16 @@ def display_scenes(
         loop: start looping from beginning.
         fps: frames (i.e. scenes) per second for looping.
         show_labels: display the scene dict keys.
+        use_scene_cam: use camera transform from trimesh scenes.
     """
     app = Qt.QApplication([])
-    window = MainWindow(scene_iterator, fps=fps, horizontal=horizontal, loop=loop, show_labels=show_labels)
+    window = MainWindow(
+        scene_iterator=scene_iterator,
+        fps=fps,
+        horizontal=horizontal,
+        loop=loop,
+        show_labels=show_labels,
+        use_scene_cam=use_scene_cam
+    )
     app.aboutToQuit.connect(window.on_close)
     app.exec_()
