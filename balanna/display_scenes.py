@@ -7,7 +7,7 @@ import vedo
 
 from PIL import Image, ImageQt
 from PyQt5 import Qt
-from typing import Any, Dict, Iterable, Optional, Tuple
+from typing import Any, Dict, Iterable, Optional
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 
@@ -24,7 +24,6 @@ class MainWindow(Qt.QMainWindow):
         loop: bool = True,
         show_labels: bool = False,
         use_scene_cam: bool = False,
-        cam_view_up: Tuple[float, float, float] = (0, 0, 1),
         parent: Qt.QWidget = None
     ):
         Qt.QMainWindow.__init__(self, parent)
@@ -105,8 +104,12 @@ class MainWindow(Qt.QMainWindow):
 
                 camera_dict = None
                 if self.use_scene_cam:
+                    focal_distance = 1.0
                     T_W_C = element.camera_transform
-                    camera_dict = dict(pos=T_W_C[:3, 3], focal_point=(0, 0, 0), viewup=(0, 0, 1))
+                    cam_0 = T_W_C[:3, 3]
+                    cam_1 = cam_0 + T_W_C[:3, :3] @ np.array([0, 0, focal_distance])  # along z of camera
+                    view_up = - T_W_C[:3, 1]  # camera convention -> y points down
+                    camera_dict = dict(pos=cam_0, focal_point=cam_1, viewup=view_up)
 
                 self.vp.clear(at=at)
                 self.vp.show(meshes_vedo, at=at, bg="white", resetcam=resetcam, camera=camera_dict)
