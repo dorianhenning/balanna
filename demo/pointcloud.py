@@ -1,17 +1,23 @@
 import numpy as np
 
-from balanna.trimesh import show_point_cloud, show_grid
+from balanna.trimesh import show_point_cloud, show_grid, show_camera
 from balanna.display_scenes import display_scenes
+
+from camera_round_flight import create_round_flight
 
 
 def main():
-    pcs = np.random.rand(10, 100, 3) * 3
-    for ts in range(10):
-        print(f'current timestamp: {ts}')
-        scene = show_point_cloud(pcs[ts])
-        scene = show_grid(-100, 100, alpha=100, scene=scene)
-        yield {'point_cloud': scene}
+    num_time_steps = 50
+    pcs = np.random.rand(num_time_steps, 100, 3) * 3 - 1.5
+    t = np.linspace(0, 10, num_time_steps)
+    T_W_C = create_round_flight(t, radius=3.0)
+
+    for k in range(num_time_steps):
+        scene = show_point_cloud(pcs[k])
+        scene = show_grid(-10, 10, alpha=100, scene=scene)
+        scene = show_camera(T_W_C[k], scene=scene)
+        yield {'scene': scene}
 
 
 if __name__ == '__main__':
-    display_scenes(main(), fps=2)
+    display_scenes(main())

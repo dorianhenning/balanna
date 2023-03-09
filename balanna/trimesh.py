@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import trimesh
 import trimesh.creation
@@ -146,6 +147,30 @@ def show_point_cloud(
         colors[:, 0] = 255  # default = red
     pc = trimesh.PointCloud(vertices_flat, colors=colors)
     scene.add_geometry(pc, transform=transform, node_name=name)
+    return scene
+
+
+def show_camera(
+    transform: np.ndarray,
+    name: Optional[str] = None,
+    scene: Optional[trimesh.Scene] = None
+) -> trimesh.Scene:
+    """Load camera mesh and transform it to given pose.
+
+    Args:
+        transform: camera pose as transformation matrix (4, 4).
+        name: scene node name of the camera mesh.
+        scene: scene to add camera to, if None a new scene will be created.
+    """
+    if scene is None:
+        scene = trimesh.Scene()
+    if transform.shape != (4, 4):
+        raise ValueError(f"Expected single transformation matrix, got {transform.shape}")
+    script_path = os.path.basename(os.path.dirname(__file__))
+    cam_mesh_path = os.path.join(script_path, "..", "meshes", "cam_z.obj")
+    cam_mesh = trimesh.load_mesh(cam_mesh_path)  # already in camera orientation (z forward, x right, y down)
+    cam_mesh = cam_mesh.apply_transform(transform)
+    scene.add_geometry(cam_mesh, node_name=name)
     return scene
 
 
