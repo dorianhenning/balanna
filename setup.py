@@ -6,6 +6,7 @@ REQUIRED = [
     'trimesh[easy]>=3.16.0',
     'vedo',
     'PyQt5',
+    'image_grid'
     # 'opencv-python-headless'
 ]
 
