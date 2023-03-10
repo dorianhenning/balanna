@@ -132,7 +132,6 @@ def show_point_cloud(
         vertices: point cloud to visualize (..., 3).
         transform: transform point cloud before adding it to scene (4, 4).
         colors: RGB color for each point (..., 3) as uint8 color 0...255..
-        radius: point radius in pixels.
         name: scene node name of point cloud mesh.
         scene: scene to add point cloud mesh to, if None a new scene will be created.
     """
@@ -147,6 +146,50 @@ def show_point_cloud(
         colors[:, 0] = 255  # default = red
     pc = trimesh.PointCloud(vertices_flat, colors=colors)
     scene.add_geometry(pc, transform=transform, node_name=name)
+    return scene
+
+
+def show_trajectory(
+    trajectory: np.ndarray,
+    colors: Tuple[float, float, float] = (255, 0, 0),
+    alpha: int = 255,
+    fade_out: bool = False,
+    scene: Optional[trimesh.Scene] = None
+) -> trimesh.Scene:
+    """Add a colored trajectory to the scene
+
+    Args:
+        trajectory: path to be drawn (N, 3).
+        colors: path color (uniformly colored line) as RGB tuple.
+        alpha: path alpha value. If fade_out, max alpha value.
+        fade_out: fade out line by linearly decreasing the alpha value along the path length.
+        scene: scene to add path to, if None a new scene will be created.
+    """
+    if len(trajectory.shape) != 2 or trajectory.shape[-1] != 3:
+        raise ValueError(f"Invalid size of trajectory, expected (N, 3), got {trajectory.shape}")
+    if scene is None:
+        scene = trimesh.Scene()
+
+    # If the trajectory just contains a single point, then it cannot be drawn. Just return the scene.
+    if trajectory.shape[0] < 2:
+        print("\033[93m" + "Trajectory must contain at least two points, skipping ..." + "\033[0m")
+        return scene
+
+    # In trimesh a path consists of line segments, each connecting one vertex with the next one. The
+    # way of connection is determined from the entities (similar to faces in 3D meshes).
+    # Each line segment could have a different color, but vedo just supports uniformly colored lines,
+    # which would be supported, but over-complicate things here.
+    # process = False, otherwise vertices are weirdly reconnected
+    num_points = trajectory.shape[0]
+    entities = [trimesh.path.entities.Line([j, j + 1]) for j in range(num_points - 1)]
+
+    if fade_out:
+        entity_colors = [(*colors, alpha * ((k + 2) / num_points)) for k in range(num_points - 1)]
+    else:
+        entity_colors = [(*colors, alpha) for _ in range(num_points - 1)]
+    path = trimesh.path.Path3D(entities=entities, vertices=trajectory, colors=entity_colors, process=False)
+
+    scene.add_geometry(path)
     return scene
 
 

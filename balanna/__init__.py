@@ -1,3 +1,4 @@
+import balanna.camera_trajectories
 import balanna.utils
 import balanna.trimesh
 

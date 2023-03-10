@@ -1,16 +1,15 @@
 import numpy as np
 
+from balanna.camera_trajectories import create_round_flight
 from balanna.trimesh import show_point_cloud, show_grid, show_camera
 from balanna.display_scenes import display_scenes
-
-from camera_round_flight import create_round_flight
 
 
 def main():
     num_time_steps = 50
     pcs = np.random.rand(num_time_steps, 100, 3) * 3 - 1.5
     t = np.linspace(0, 10, num_time_steps)
-    T_W_C = create_round_flight(t, radius=3.0)
+    T_W_C = create_round_flight(t, focal_point=(0, 0, 0), radius=3.0)
 
     for k in range(num_time_steps):
         scene = show_point_cloud(pcs[k])
