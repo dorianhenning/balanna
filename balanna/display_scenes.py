@@ -4,6 +4,7 @@ import importlib.metadata
 import numpy as np
 import packaging.version
 import pathlib
+import trimesh.path.entities
 import trimesh.visual
 import trimesh.viewer
 import vedo
@@ -117,11 +118,31 @@ class MainWindow(Qt.QMainWindow):
                         if m.visual.kind == "vertex":
                             face_colors = trimesh.visual.color.vertex_to_face_color(m.visual.vertex_colors, m.faces)
                             m_vedo.cellIndividualColors(face_colors)
+                        meshes_vedo.append(m_vedo)
+
                     elif isinstance(m, trimesh.PointCloud):
                         m_vedo = vedo.Points(m.vertices, c=m.visual.vertex_colors)
+                        meshes_vedo.append(m_vedo)
+
+                    elif isinstance(m, trimesh.path.Path3D):
+                        # The trimesh path consists of entities and vertices. The vertices are the 3D points,
+                        # that are connected as described in the entities.
+                        if not all([isinstance(me, trimesh.path.entities.Line) for me in m.entities]):
+                            raise ValueError("Currently only trimesh.path.entities.Line entities are supported")
+                        if not all([len(me.points) == 2 for me in m.entities]):
+                            raise ValueError("Invalid line entities, should have point lists [start, end]")
+
+                        # Add each line segment individually as a vedo line to support multicolored lines
+                        # and different alpha values along the line.
+                        for ke, line_entity in enumerate(m.entities):
+                            i, j = line_entity.points
+                            c = m.colors[ke, :3]
+                            alpha = m.colors[ke, -1] / 255  # [0, 255] -> [0, 1]
+                            m_vedo = vedo.Lines(m.vertices[None, i], m.vertices[None, j], lw=2, c=c, alpha=alpha)
+                            meshes_vedo.append(m_vedo)
+
                     else:
-                        m_vedo = m
-                    meshes_vedo.append(m_vedo)
+                        meshes_vedo.append(m)
 
                 if self.show_labels:
                     annotation = vedo.CornerAnnotation()
