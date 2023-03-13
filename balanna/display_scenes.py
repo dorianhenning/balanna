@@ -7,6 +7,7 @@ import pathlib
 import trimesh.path.entities
 import trimesh.visual
 import trimesh.viewer
+import time
 import vedo
 
 from functools import partial
@@ -30,6 +31,7 @@ class MainWindow(Qt.QMainWindow):
         loop: bool = True,
         show_labels: bool = False,
         use_scene_cam: bool = False,
+        debug: bool = False,
         parent: Qt.QWidget = None
     ):
         Qt.QMainWindow.__init__(self, parent)
@@ -42,6 +44,7 @@ class MainWindow(Qt.QMainWindow):
         self.fps = fps
         self.show_labels = show_labels
         self.use_scene_cam = use_scene_cam
+        self.debug = debug
         scene_dict = self.get_next_scene_dict()
         if scene_dict is None:
             return
@@ -97,6 +100,8 @@ class MainWindow(Qt.QMainWindow):
         self.render_(scene_dict, resetcam=True)
         self.timer = Qt.QTimer(self)
         self.timer.timeout.connect(self.render_next_scene)
+        if self.debug:
+            print("\033[36m" + "Setup ready, starting to loop ..." + "\033[0m")
         if loop:
             self.toggle_looping()
 
@@ -108,6 +113,8 @@ class MainWindow(Qt.QMainWindow):
             self.timer.stop()
 
     def render_(self, scene_dict: SceneDictType, resetcam: bool = False):
+        start_time = time.perf_counter()
+
         for key, element in scene_dict.items():
             if isinstance(element, trimesh.Scene) and key in self.scene_key_dict:
                 at = self.scene_key_dict[key]
@@ -176,6 +183,10 @@ class MainWindow(Qt.QMainWindow):
 
             else:
                 continue
+
+        if self.debug:
+            dt = int((time.perf_counter() - start_time) * 1000)  # secs -> milliseconds
+            print("\033[36m" + f"Rendering time: {dt} ms" + "\033[0m")
 
         if self.video_directory is not None:
             self.screenshot(self.video_directory, prefix=f"{self.__video_index:05d}")
@@ -283,7 +294,8 @@ def display_scenes(
     fps: float = 30.0,
     video_directory: Optional[pathlib.Path] = None,
     show_labels: bool = False,
-    use_scene_cam: bool = False
+    use_scene_cam: bool = False,
+    debug: bool = False
 ):
     """Display scenes stored in scene iterator as PyQt app.
 
@@ -298,6 +310,7 @@ def display_scenes(
         video_directory: directory for storing screenshots.
         show_labels: display the scene dict keys.
         use_scene_cam: use camera transform from trimesh scenes.
+        debug: printing debug information.
     """
     app = Qt.QApplication([])
     window = MainWindow(
@@ -307,6 +320,7 @@ def display_scenes(
         horizontal=horizontal,
         loop=loop,
         show_labels=show_labels,
+        debug=debug,
         use_scene_cam=use_scene_cam
     )
     app.aboutToQuit.connect(window.on_close)
