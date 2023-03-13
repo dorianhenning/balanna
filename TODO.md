@@ -30,3 +30,6 @@ Features:
 
 ## Camera Round Flight
 - [ ] stop scene and start camera round flight 
+
+## Matplotlib
+- [ ] add support for matplotlib axes (https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html)
