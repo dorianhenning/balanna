@@ -3,7 +3,7 @@ import time
 
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5 import Qt
-from balanna.display_scenes import MainWindowRealTime
+from balanna.display_scenes import display_real_time
 
 
 # Example: https://realpython.com/python-pyqt-qthread/
@@ -22,7 +22,5 @@ class DemoNode(QObject):
 
 
 if __name__ == '__main__':
-    app = Qt.QApplication([])
     worker = DemoNode()
-    window = MainWindowRealTime(image_keys=["image"], worker=worker)
-    app.exec_()
+    display_real_time(worker, image_keys=["image"])

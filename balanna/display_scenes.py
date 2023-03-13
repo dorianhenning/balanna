@@ -18,7 +18,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 
-__all__ = ['display_scenes', 'get_renderer']
+__all__ = ['display_scenes', 'display_real_time']
 
 
 SceneDictType = Dict[str, Any]
@@ -385,6 +385,10 @@ class MainWindowRealTime(Qt.QMainWindow):
                 qt_img = ImageQt.ImageQt(img)
                 self.image_widge_dict[key].setPixmap(Qt.QPixmap.fromImage(qt_img))
 
+    def on_close(self):
+        for key, widget in self.image_widge_dict.items():
+            widget.close()
+
 
 def display_scenes(
     scene_iterator: Iterable[SceneDictType],
@@ -426,7 +430,8 @@ def display_scenes(
     app.exec_()
 
 
-def get_renderer(
+def display_real_time(
+    worker: QObject,
     image_keys: Optional[List[str]] = None,
     scene_keys: Optional[List[str]] = None,
     horizontal: bool = True,
@@ -434,7 +439,7 @@ def get_renderer(
     show_labels: bool = False,
     use_scene_cam: bool = False,
     debug: bool = False
-) -> Callable[[SceneDictType, ], bool]:
+):
     if image_keys is None and scene_keys is None:
         raise ValueError("Neither image nor scene keys, provide at least one key!")
     if image_keys is None:
@@ -443,16 +448,6 @@ def get_renderer(
         scene_keys = []
 
     app = Qt.QApplication([])
-    window = MainWindow(
-        image_keys=image_keys,
-        scene_keys=scene_keys,
-        video_directory=video_directory,
-        horizontal=horizontal,
-        show_labels=show_labels,
-        debug=debug,
-        use_scene_cam=use_scene_cam
-    )
-
+    window = MainWindowRealTime(image_keys=image_keys, worker=worker)
     app.aboutToQuit.connect(window.on_close)
-    # app.exec_()
-    return window, app
+    app.exec_()
