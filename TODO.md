@@ -3,8 +3,8 @@
 ## Mesh Visualization
 
 Features:
-- [ ] single frame (simple example scene)
-- [ ] single frame comparison between `N` number of resulting meshes (e.g., optimization)
+- [x] single frame (simple example scene)
+- [x] single frame comparison between `N` number of resulting meshes (e.g., optimization)
 - [x] sequence of single mesh
 - [x] sequence of multiple meshes
 - [x] uncertainty coloring of mesh?
@@ -17,9 +17,9 @@ Features:
 
 ## Trajectory Plotting
 
-- [ ] trajectory plotting over entire sequence
-- [ ] trajectory plotting that is growing over sequence
-- [ ] trajectory plot where the trajectory fades out (only last `N` frames)
+- [x] trajectory plotting over entire sequence
+- [x] trajectory plotting that is growing over sequence
+- [x] trajectory plot where the trajectory fades out (only last `N` frames)
 
 ## Image Keypoint Renderings
 
@@ -27,3 +27,9 @@ Features:
 - [x] projection of multiple different estimates of
   - [x] camera estimation
   - [x] posture/shape estimation
+
+## Camera Round Flight
+- [ ] stop scene and start camera round flight 
+
+## Matplotlib
+- [ ] add support for matplotlib axes (https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html)
