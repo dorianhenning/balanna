@@ -27,3 +27,6 @@ Features:
 - [x] projection of multiple different estimates of
   - [x] camera estimation
   - [x] posture/shape estimation
+
+## Camera Round Flight
+- [ ] stop scene and start camera round flight 
