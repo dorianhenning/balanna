@@ -13,12 +13,12 @@ import vedo
 from functools import partial
 from PIL import Image, ImageQt
 from PyQt5 import Qt
-from PyQt5.QtCore import QObject, QThread
+from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from typing import Any, Dict, Iterable, List, Optional, Union
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 
-__all__ = ['display_scenes', 'display_real_time']
+__all__ = ['display_scenes', 'display_real_time', 'RealTimeNode']
 
 
 SceneDictType = Dict[str, Any]
@@ -335,6 +335,41 @@ class MainWindowDataset(MainWindow):
             self.timer.start(int(1 / self.fps * 1000))  # in milliseconds
 
 
+class RealTimeNode(QObject):
+    """Template class for real time rendering.
+
+    Examples:
+        class DemoNode(RealTimeNode):
+
+            def callback(self):
+                scene = trimesh.Scene()
+                box_mesh = trimesh.creation.box(bounds=[(-1, -1, 0), (1, 1, 1)])
+                scene.add_geometry(box_mesh)
+                self.render({"scene": scene})
+
+                if condition:
+                    self.close()
+    """
+    finished = pyqtSignal()
+    running = pyqtSignal()
+    scene_dict_emitter = pyqtSignal(dict)
+
+    def callback(self):
+        raise NotImplementedError
+
+    def run(self):
+        while True:
+            if not self.running:
+                continue
+            self.callback()
+
+    def render(self, scene_dict: SceneDictType):
+        self.scene_dict_emitter.emit(scene_dict)  # noqa
+
+    def close(self):
+        self.finished.emit()  # noqa
+
+
 class MainWindowRealTime(MainWindow):
 
     def __init__(
@@ -368,7 +403,7 @@ class MainWindowRealTime(MainWindow):
         self.worker.finished.connect(self.thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
-        self.worker.scene_dict.connect(self.render_)
+        self.worker.scene_dict_emitter.connect(self.render_)
         self.thread.start()
 
         self.show()
@@ -426,7 +461,7 @@ def display_scenes(
 
 
 def display_real_time(
-    worker: QObject,
+    worker: RealTimeNode,
     image_keys: Optional[List[str]] = None,
     scene_keys: Optional[List[str]] = None,
     horizontal: bool = True,
@@ -435,6 +470,22 @@ def display_real_time(
     use_scene_cam: bool = False,
     debug: bool = False
 ):
+    """Display scenes from a real-time application, i.e. render in-coming scenes directly.
+
+    The worker is a process that generates each new scene in a separate thread and passes it to the renderer.
+    For a smooth rendering process and for simplification, the image and scene keys have to be known in advances
+    and cannot be changed afterwards.
+
+    Args:
+        worker: generator of new scenes.
+        image_keys: names of images in rendered dictionary.
+        scene_keys: names of 3D scenes in rendered dictionary.
+        horizontal: window orientation, horizontal or vertical stacking.
+        video_directory: directory for storing screenshots.
+        show_labels: display the scene dict keys.
+        use_scene_cam: use camera transform from trimesh scenes.
+        debug: printing debug information.
+    """
     if image_keys is None and scene_keys is None:
         raise ValueError("Neither image nor scene keys, provide at least one key!")
     if not hasattr(worker, 'run'):
