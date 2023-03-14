@@ -10,6 +10,11 @@ import trimesh.viewer
 import time
 import vedo
 
+import matplotlib
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qtagg import (
+    FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+
 from functools import partial
 from PIL import Image, ImageQt
 from PyQt5 import Qt
@@ -79,6 +84,17 @@ class MainWindow(Qt.QMainWindow):
             self.vtkWidgets.append(vtk_widget)
             self.vps.append(vp)
         vl.addLayout(vl2)
+
+        figure_keys = [key for key, value in scene_dict.items() if isinstance(value, Figure)]
+        vl3 = Qt.QVBoxLayout()
+        self.figure_key_dict = {key: i for i, key in enumerate(figure_keys)}
+        self.figureCanvas = []
+        for key in figure_keys:
+            figure_canvas = FigureCanvas(Figure(figsize=(5, 3)))
+            self.figureCanvas.append(figure_canvas)
+            #vl3.addWidget(NavigationToolbar(figure_canvas, self))
+            vl3.addWidget(figure_canvas)
+        vl.addLayout(vl3)
 
         # Set up mouse timer for synchronizing mouse interactions across multiple (3D) widgets.
         # Therefore, the interaction is detected, tracked and transferred to all other 3D widgets.
@@ -166,6 +182,11 @@ class MainWindow(Qt.QMainWindow):
 
             elif isinstance(element, str):
                 print(f"{key}: {element}")
+
+            elif isinstance(element, Figure) and key in self.figure_key_dict:
+                at = self.figure_key_dict[key]
+                self.figureCanvas[at].figure = element
+                self.figureCanvas[at].figure.canvas.draw()
 
             else:
                 continue
