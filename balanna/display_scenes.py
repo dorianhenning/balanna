@@ -14,7 +14,7 @@ from functools import partial
 from PIL import Image, ImageQt
 from PyQt5 import Qt
 from PyQt5.QtCore import QObject, QThread
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 
@@ -83,7 +83,7 @@ class MainWindow(Qt.QMainWindow):
         # Set up mouse timer for synchronizing mouse interactions across multiple (3D) widgets.
         # Therefore, the interaction is detected, tracked and transferred to all other 3D widgets.
         self._mouse_timer = Qt.QTimer(self)
-        self._mouse_timer.timeout.connect(self.__align_event)
+        self._mouse_timer.timeout.connect(self.__align_event)  # noqa
         self._current_align_id = None
 
         frame.setLayout(vl)
@@ -97,11 +97,6 @@ class MainWindow(Qt.QMainWindow):
             self.video_directory = pathlib.Path(video_directory)
             if self.video_directory.exists():
                 print("\033[93m" + "Video directory already exists, overwriting it ..." + "\033[0m")
-
-    def __call__(self, scene_dict: SceneDictType) -> bool:
-        print("rendering ...")
-        self.render_(scene_dict)
-        return True
 
     def render_(self, scene_dict: SceneDictType, resetcam: bool = False):
         start_time = time.perf_counter()
@@ -302,7 +297,7 @@ class MainWindowDataset(MainWindow):
         # Setup looping timer and connect it to render a new scene at every timer callback.
         # If loop is true, start looping right away.
         self.timer = Qt.QTimer(self)
-        self.timer.timeout.connect(self.render_next_scene)
+        self.timer.timeout.connect(self.render_next_scene)  # noqa
         if loop:
             self.toggle_looping()
 
@@ -340,25 +335,30 @@ class MainWindowDataset(MainWindow):
             self.timer.start(int(1 / self.fps * 1000))  # in milliseconds
 
 
-class MainWindowRealTime(Qt.QMainWindow):
+class MainWindowRealTime(MainWindow):
 
-    def __init__(self, image_keys: List[str], worker: QObject, parent=None):
-        super(MainWindowRealTime, self).__init__(parent=parent)
-
-        Qt.QMainWindow.__init__(self, parent)
-        frame = Qt.QFrame()
-        vl = Qt.QHBoxLayout()
-
-        # Set up image-based widgets (i.e. numpy array inputs).
-        vl1 = Qt.QHBoxLayout()
-        self.image_widge_dict = dict()
-        for key in image_keys:
-            self.image_widge_dict[key] = Qt.QLabel()
-            vl1.addWidget(self.image_widge_dict[key])
-        vl.addLayout(vl1)
-
-        frame.setLayout(vl)
-        self.setCentralWidget(frame)
+    def __init__(
+        self,
+        worker: QObject,
+        image_keys: List[str],
+        scene_keys: List[str],
+        video_directory: Optional[Union[pathlib.Path, str]] = None,
+        horizontal: bool = True,
+        show_labels: bool = False,
+        use_scene_cam: bool = False,
+        debug: bool = False,
+        parent: Qt.QWidget = None
+    ):
+        super(MainWindowRealTime, self).__init__(
+            image_keys=image_keys,
+            scene_keys=scene_keys,
+            video_directory=video_directory,
+            horizontal=horizontal,
+            show_labels=show_labels,
+            use_scene_cam=use_scene_cam,
+            debug=debug,
+            parent=parent
+        )
 
         # Set up multi-processing pipeline.
         self.thread = QThread()
@@ -373,21 +373,16 @@ class MainWindowRealTime(Qt.QMainWindow):
 
         self.show()
 
-    def render_(self, scene_dict: SceneDictType):
-        for key, element in scene_dict.items():
-            if isinstance(element, np.ndarray) and key in self.image_widge_dict:
-                if len(element.shape) == 3:
-                    image_mode = "RGB"
-                    element = np.transpose(element, (1, 2, 0))  # (C, H, W) -> (H, W, C)
-                else:
-                    image_mode = "L"
-                img = Image.fromarray(element, mode=image_mode)
-                qt_img = ImageQt.ImageQt(img)
-                self.image_widge_dict[key].setPixmap(Qt.QPixmap.fromImage(qt_img))
+    def _on_key(self, event_dict) -> None:
+        super(MainWindowRealTime, self)._on_key(event_dict)
+        key_pressed = event_dict["keyPressed"]
+        if key_pressed == "s":
+            self.worker.running = not self.worker.running
 
-    def on_close(self):
-        for key, widget in self.image_widge_dict.items():
-            widget.close()
+    @staticmethod
+    def print_usage():
+        MainWindow.print_usage()
+        print("\ts: play / pause")
 
 
 def display_scenes(
@@ -442,12 +437,23 @@ def display_real_time(
 ):
     if image_keys is None and scene_keys is None:
         raise ValueError("Neither image nor scene keys, provide at least one key!")
+    if not hasattr(worker, 'run'):
+        raise ValueError("Worker must have method run()")
     if image_keys is None:
         image_keys = []
     if scene_keys is None:
         scene_keys = []
 
     app = Qt.QApplication([])
-    window = MainWindowRealTime(image_keys=image_keys, worker=worker)
+    window = MainWindowRealTime(
+        worker=worker,
+        image_keys=image_keys,
+        scene_keys=scene_keys,
+        video_directory=video_directory,
+        horizontal=horizontal,
+        show_labels=show_labels,
+        use_scene_cam=use_scene_cam,
+        debug=debug
+    )
     app.aboutToQuit.connect(window.on_close)
     app.exec_()
