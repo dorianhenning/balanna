@@ -173,7 +173,8 @@ class MainWindow(Qt.QMainWindow):
             elif isinstance(element, np.ndarray) and key in self.image_widge_dict:
                 if len(element.shape) == 3:
                     image_mode = "RGB"
-                    element = np.transpose(element, (1, 2, 0))  # (C, H, W) -> (H, W, C)
+                    if element.shape[0] == 3:
+                        element = np.transpose(element, (1, 2, 0))  # (C, H, W) -> (H, W, C)
                 else:
                     image_mode = "L"
                 img = Image.fromarray(element, mode=image_mode)

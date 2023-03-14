@@ -20,7 +20,6 @@ def main():
         scene = show_grid(scene=scene)
 
         image = np.random.randint(0, 255, (480, 640, 3)).astype(np.uint8)
-        image = np.random.randint(0, 255, (3, 480, 640)).astype(np.uint8)
 
         figure, axes = plt.subplots()
         t = np.linspace(0, 10, 501)
