@@ -19,14 +19,14 @@ def main():
         scene.add_geometry(box_mesh)
         scene = show_grid(scene=scene)
 
-        image = np.random.randint(0, 255, (480, 640, 3)).astype(np.uint8)
+        image = np.random.randint(0, 255, (240, 320, 3)).astype(np.uint8)
 
         figure, axes = plt.subplots()
         t = np.linspace(0, 10, 501)
-        axes.plot(t, np.tan(t + k * 0.1), ".")
+        axes.plot(t, np.sin(t + k * 0.1))
 
-        yield {"scene": scene, "image": image, "figure": figure}
+        yield {"scene": scene, "image": image, "figure": axes}
 
 
 if __name__ == '__main__':
-    display_scenes(main(), fps=10, horizontal=False)
+    display_scenes(main(), fps=10)

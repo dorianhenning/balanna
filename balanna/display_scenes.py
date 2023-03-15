@@ -11,9 +11,10 @@ import time
 import vedo
 
 import matplotlib
+from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import (
-    FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+    FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 
 from functools import partial
 from PIL import Image, ImageQt
@@ -28,6 +29,12 @@ __all__ = ['display_scenes', 'display_real_time', 'RealTimeNode']
 
 SceneDictType = Dict[str, Any]
 
+class MplCanvas(FigureCanvas):
+
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+        super(MplCanvas, self).__init__(fig)
 
 class MainWindow(Qt.QMainWindow):
 
@@ -35,6 +42,7 @@ class MainWindow(Qt.QMainWindow):
         self,
         image_keys: List[str],
         scene_keys: List[str],
+        figure_keys: List[str],
         video_directory: Optional[Union[pathlib.Path, str]] = None,
         horizontal: bool = True,
         show_labels: bool = False,
@@ -85,12 +93,11 @@ class MainWindow(Qt.QMainWindow):
             self.vps.append(vp)
         vl.addLayout(vl2)
 
-        figure_keys = [key for key, value in scene_dict.items() if isinstance(value, Figure)]
         vl3 = Qt.QVBoxLayout()
         self.figure_key_dict = {key: i for i, key in enumerate(figure_keys)}
         self.figureCanvas = []
         for key in figure_keys:
-            figure_canvas = FigureCanvas(Figure(figsize=(5, 3)))
+            figure_canvas = MplCanvas(self, width=5, height=3)
             self.figureCanvas.append(figure_canvas)
             #vl3.addWidget(NavigationToolbar(figure_canvas, self))
             vl3.addWidget(figure_canvas)
@@ -184,10 +191,13 @@ class MainWindow(Qt.QMainWindow):
             elif isinstance(element, str):
                 print(f"{key}: {element}")
 
-            elif isinstance(element, Figure) and key in self.figure_key_dict:
+            elif isinstance(element, Axes) and key in self.figure_key_dict:
                 at = self.figure_key_dict[key]
-                self.figureCanvas[at].figure = element
-                self.figureCanvas[at].figure.canvas.draw()
+                width, height = self.figureCanvas[at].get_width_height()
+                self.figureCanvas[at].figure.clf()
+                element.figure = self.figureCanvas[at].figure
+                self.figureCanvas[at].figure.add_axes(element)
+                self.figureCanvas[at].draw()
 
             else:
                 continue
@@ -303,9 +313,11 @@ class MainWindowDataset(MainWindow):
 
         image_keys = [key for key, value in scene_dict.items() if isinstance(value, np.ndarray)]
         scene_keys = [key for key, value in scene_dict.items() if isinstance(value, trimesh.Scene)]
+        figure_keys = [key for key, value in scene_dict.items() if isinstance(value, Axes)]
         super(MainWindowDataset, self).__init__(
             image_keys=image_keys,
             scene_keys=scene_keys,
+            figure_keys=figure_keys,
             video_directory=video_directory,
             horizontal=horizontal,
             show_labels=show_labels,
@@ -399,6 +411,7 @@ class MainWindowRealTime(MainWindow):
         worker: QObject,
         image_keys: List[str],
         scene_keys: List[str],
+        figure_keys: List[str],
         video_directory: Optional[Union[pathlib.Path, str]] = None,
         horizontal: bool = True,
         show_labels: bool = False,
@@ -409,6 +422,7 @@ class MainWindowRealTime(MainWindow):
         super(MainWindowRealTime, self).__init__(
             image_keys=image_keys,
             scene_keys=scene_keys,
+            figure_keys=figure_keys,
             video_directory=video_directory,
             horizontal=horizontal,
             show_labels=show_labels,
@@ -486,6 +500,7 @@ def display_real_time(
     worker: RealTimeNode,
     image_keys: Optional[List[str]] = None,
     scene_keys: Optional[List[str]] = None,
+    figure_keys: List[str] = None,
     horizontal: bool = True,
     video_directory: Optional[pathlib.Path] = None,
     show_labels: bool = False,
@@ -502,6 +517,7 @@ def display_real_time(
         worker: generator of new scenes.
         image_keys: names of images in rendered dictionary.
         scene_keys: names of 3D scenes in rendered dictionary.
+        figure_keys: names of matplotlib figures in rendered dictionary.
         horizontal: window orientation, horizontal or vertical stacking.
         video_directory: directory for storing screenshots.
         show_labels: display the scene dict keys.
@@ -516,12 +532,15 @@ def display_real_time(
         image_keys = []
     if scene_keys is None:
         scene_keys = []
+    if figure_keys is None:
+        figure_keys = []
 
     app = Qt.QApplication([])
     window = MainWindowRealTime(
         worker=worker,
         image_keys=image_keys,
         scene_keys=scene_keys,
+        figure_keys=figure_keys,
         video_directory=video_directory,
         horizontal=horizontal,
         show_labels=show_labels,
