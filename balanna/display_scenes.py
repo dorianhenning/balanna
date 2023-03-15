@@ -29,12 +29,6 @@ __all__ = ['display_scenes', 'display_real_time', 'RealTimeNode']
 
 SceneDictType = Dict[str, Any]
 
-class MplCanvas(FigureCanvas):
-
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = fig.add_subplot(111)
-        super(MplCanvas, self).__init__(fig)
 
 class MainWindow(Qt.QMainWindow):
 
@@ -97,7 +91,7 @@ class MainWindow(Qt.QMainWindow):
         self.figure_key_dict = {key: i for i, key in enumerate(figure_keys)}
         self.figureCanvas = []
         for key in figure_keys:
-            figure_canvas = MplCanvas(self, width=5, height=3)
+            figure_canvas = FigureCanvas(Figure())
             self.figureCanvas.append(figure_canvas)
             #vl3.addWidget(NavigationToolbar(figure_canvas, self))
             vl3.addWidget(figure_canvas)
@@ -193,10 +187,14 @@ class MainWindow(Qt.QMainWindow):
 
             elif isinstance(element, Axes) and key in self.figure_key_dict:
                 at = self.figure_key_dict[key]
+                # have to use this width/height to adjust the size of the axis somehow
                 width, height = self.figureCanvas[at].get_width_height()
+                # clear figure
                 self.figureCanvas[at].figure.clf()
+                # set new references of axes element
                 element.figure = self.figureCanvas[at].figure
                 self.figureCanvas[at].figure.add_axes(element)
+                # draw figure to update!
                 self.figureCanvas[at].draw()
 
             else:
