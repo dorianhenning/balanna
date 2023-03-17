@@ -12,7 +12,7 @@ REQUIRED = [
 
 setup(
     name='balanna',
-    version='0.4',
+    version='0.5',
     description='Visualization Tools for Humans and Stuff',
     author='Simon Schaefer & Dorian Henning',
     author_email='dorian.henning@gmail.com',

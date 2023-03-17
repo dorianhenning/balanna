@@ -88,6 +88,13 @@ class MainWindow(Qt.QMainWindow):
 
         frame.setLayout(vl)
         self.setCentralWidget(frame)
+        # If image and scene keys are displayed, somehow the scene widgets start with zero width.
+        # Therefore, resize the window before startup by multiplying the current size with the
+        # number of scene widgets.
+        if len(image_keys) > 0 and len(scene_keys) > 0:
+            w = self.size().width() + self.size().width() * len(scene_keys)
+            h = self.size().height()
+            self.resize(w, h)
         self.show()
 
         # Set up video directory for storing screenshots.
