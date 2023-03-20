@@ -1,4 +1,5 @@
 import datetime
+import pickle as pkl
 import image_grid
 import importlib.metadata
 import numpy as np
@@ -104,6 +105,7 @@ class MainWindow(Qt.QMainWindow):
             self.video_directory = pathlib.Path(video_directory)
             if self.video_directory.exists():
                 print("\033[93m" + "Video directory already exists, overwriting it ..." + "\033[0m")
+            self.video_directory.mkdir(exist_ok=True, parents=True)
 
     def render_(self, scene_dict: SceneDictType, resetcam: bool = False):
         start_time = time.perf_counter()
@@ -385,6 +387,7 @@ class MainWindowRealTime(MainWindow):
         image_keys: List[str],
         scene_keys: List[str],
         video_directory: Optional[Union[pathlib.Path, str]] = None,
+        cache_directory: Optional[Union[pathlib.Path, str]] = None,
         horizontal: bool = True,
         show_labels: bool = False,
         use_scene_cam: bool = False,
@@ -402,6 +405,14 @@ class MainWindowRealTime(MainWindow):
             parent=parent
         )
 
+        self.cache_directory = None
+        self.__cache_index = 0
+        if cache_directory is not None:
+            self.cache_directory = pathlib.Path(cache_directory)
+            if self.cache_directory.exists():
+                print("\033[93m" + "Cache directory already exists, overwriting it ..." + "\033[0m")
+            self.cache_directory.mkdir(exist_ok=True, parents=True)
+
         # Set up multi-processing pipeline.
         self.thread = QThread()
         self.worker = worker
@@ -414,6 +425,16 @@ class MainWindowRealTime(MainWindow):
         self.thread.start()
 
         self.show()
+
+    def render_(self, scene_dict: SceneDictType, resetcam: bool = False):
+        super(MainWindowRealTime, self).render_(scene_dict, resetcam=resetcam)
+
+        # If a cache directory is defined, write the scene dict to a pickle file, one per scene_dict.
+        if self.cache_directory is not None:
+            cache_file_name = self.cache_directory / f"{self.__cache_index:05d}.pkl"
+            with open(cache_file_name, 'wb+') as f:
+                pkl.dump(scene_dict, file=f)
+            self.__cache_index += 1
 
     def _on_key(self, event_dict) -> None:
         super(MainWindowRealTime, self)._on_key(event_dict)
@@ -432,7 +453,7 @@ def display_scenes(
     horizontal: bool = True,
     loop: bool = False,
     fps: float = 30.0,
-    video_directory: Optional[pathlib.Path] = None,
+    video_directory: Optional[Union[pathlib.Path, str]] = None,
     show_labels: bool = False,
     use_scene_cam: bool = False,
     debug: bool = False
@@ -472,7 +493,8 @@ def display_real_time(
     image_keys: Optional[List[str]] = None,
     scene_keys: Optional[List[str]] = None,
     horizontal: bool = True,
-    video_directory: Optional[pathlib.Path] = None,
+    video_directory: Optional[Union[pathlib.Path, str]] = None,
+    cache_directory: Optional[Union[pathlib.Path, str]] = None,
     show_labels: bool = False,
     use_scene_cam: bool = False,
     debug: bool = False
@@ -489,6 +511,7 @@ def display_real_time(
         scene_keys: names of 3D scenes in rendered dictionary.
         horizontal: window orientation, horizontal or vertical stacking.
         video_directory: directory for storing screenshots.
+        cache_directory: directory for caching the input scene dicts for re-rendering.
         show_labels: display the scene dict keys.
         use_scene_cam: use camera transform from trimesh scenes.
         debug: printing debug information.
@@ -508,6 +531,7 @@ def display_real_time(
         image_keys=image_keys,
         scene_keys=scene_keys,
         video_directory=video_directory,
+        cache_directory=cache_directory,
         horizontal=horizontal,
         show_labels=show_labels,
         use_scene_cam=use_scene_cam,
