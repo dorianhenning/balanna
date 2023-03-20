@@ -23,3 +23,8 @@ def main():
 if __name__ == '__main__':
     display_scenes(main())
 ```
+
+## Visualization of cached directory
+```
+python3 -m balanna <cached-directory>
+```
