@@ -12,6 +12,12 @@ import time
 import vedo
 import vtk
 
+import matplotlib
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qtagg import (
+    FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+
 from functools import partial
 from PIL import Image, ImageQt
 from PyQt5 import Qt
@@ -33,6 +39,7 @@ class MainWindow(Qt.QMainWindow):
         self,
         image_keys: List[str],
         scene_keys: List[str],
+        figure_keys: List[str],
         video_directory: Optional[Union[pathlib.Path, str]] = None,
         horizontal: bool = True,
         show_labels: bool = False,
@@ -82,6 +89,16 @@ class MainWindow(Qt.QMainWindow):
             self.vtkWidgets.append(vtk_widget)
             self.vps.append(vp)
         vl.addLayout(vl2)
+
+        vl3 = Qt.QVBoxLayout()
+        self.figure_key_dict = {key: i for i, key in enumerate(figure_keys)}
+        self.figureCanvas = []
+        for key in figure_keys:
+            figure_canvas = FigureCanvas(Figure())
+            self.figureCanvas.append(figure_canvas)
+            #vl3.addWidget(NavigationToolbar(figure_canvas, self))
+            vl3.addWidget(figure_canvas)
+        vl.addLayout(vl3)
 
         # Set up mouse timer for synchronizing mouse interactions across multiple (3D) widgets.
         # Therefore, the interaction is detected, tracked and transferred to all other 3D widgets.
@@ -195,7 +212,8 @@ class MainWindow(Qt.QMainWindow):
             elif isinstance(element, np.ndarray) and key in self.image_widge_dict:
                 if len(element.shape) == 3:
                     image_mode = "RGB"
-                    element = np.transpose(element, (1, 2, 0))  # (C, H, W) -> (H, W, C)
+                    if element.shape[0] == 3:
+                        element = np.transpose(element, (1, 2, 0))  # (C, H, W) -> (H, W, C)
                 else:
                     image_mode = "L"
                 img = Image.fromarray(element, mode=image_mode)
@@ -204,6 +222,18 @@ class MainWindow(Qt.QMainWindow):
 
             elif isinstance(element, str):
                 print(f"{key}: {element}")
+
+            elif isinstance(element, Axes) and key in self.figure_key_dict:
+                at = self.figure_key_dict[key]
+                # have to use this width/height to adjust the size of the axis somehow
+                width, height = self.figureCanvas[at].get_width_height()
+                # clear figure
+                self.figureCanvas[at].figure.clf()
+                # set new references of axes element
+                element.figure = self.figureCanvas[at].figure
+                self.figureCanvas[at].figure.add_axes(element)
+                # draw figure to update!
+                self.figureCanvas[at].draw()
 
             else:
                 continue
@@ -319,9 +349,11 @@ class MainWindowDataset(MainWindow):
 
         image_keys = [key for key, value in scene_dict.items() if isinstance(value, np.ndarray)]
         scene_keys = [key for key, value in scene_dict.items() if isinstance(value, trimesh.Scene)]
+        figure_keys = [key for key, value in scene_dict.items() if isinstance(value, Axes)]
         super(MainWindowDataset, self).__init__(
             image_keys=image_keys,
             scene_keys=scene_keys,
+            figure_keys=figure_keys,
             video_directory=video_directory,
             horizontal=horizontal,
             show_labels=show_labels,
@@ -415,6 +447,7 @@ class MainWindowRealTime(MainWindow):
         worker: QObject,
         image_keys: List[str],
         scene_keys: List[str],
+        figure_keys: List[str],
         video_directory: Optional[Union[pathlib.Path, str]] = None,
         cache_directory: Optional[Union[pathlib.Path, str]] = None,
         horizontal: bool = True,
@@ -426,6 +459,7 @@ class MainWindowRealTime(MainWindow):
         super(MainWindowRealTime, self).__init__(
             image_keys=image_keys,
             scene_keys=scene_keys,
+            figure_keys=figure_keys,
             video_directory=video_directory,
             horizontal=horizontal,
             show_labels=show_labels,
@@ -521,6 +555,7 @@ def display_real_time(
     worker: RealTimeNode,
     image_keys: Optional[List[str]] = None,
     scene_keys: Optional[List[str]] = None,
+    figure_keys: List[str] = None,
     horizontal: bool = True,
     video_directory: Optional[Union[pathlib.Path, str]] = None,
     cache_directory: Optional[Union[pathlib.Path, str]] = None,
@@ -538,6 +573,7 @@ def display_real_time(
         worker: generator of new scenes.
         image_keys: names of images in rendered dictionary.
         scene_keys: names of 3D scenes in rendered dictionary.
+        figure_keys: names of matplotlib figures in rendered dictionary.
         horizontal: window orientation, horizontal or vertical stacking.
         video_directory: directory for storing screenshots.
         cache_directory: directory for caching the input scene dicts for re-rendering.
@@ -553,12 +589,15 @@ def display_real_time(
         image_keys = []
     if scene_keys is None:
         scene_keys = []
+    if figure_keys is None:
+        figure_keys = []
 
     app = Qt.QApplication([])
     window = MainWindowRealTime(
         worker=worker,
         image_keys=image_keys,
         scene_keys=scene_keys,
+        figure_keys=figure_keys,
         video_directory=video_directory,
         cache_directory=cache_directory,
         horizontal=horizontal,
