@@ -93,7 +93,7 @@ class MainWindow(Qt.QMainWindow):
         vl3 = Qt.QVBoxLayout()
         self.figure_key_dict = {key: i for i, key in enumerate(figure_keys)}
         self.figureCanvas = []
-        for key in figure_keys:
+        for _ in figure_keys:
             figure_canvas = FigureCanvas(Figure())
             self.figureCanvas.append(figure_canvas)
             #vl3.addWidget(NavigationToolbar(figure_canvas, self))
@@ -146,16 +146,25 @@ class MainWindow(Qt.QMainWindow):
                         vertex_colors = m.visual.vertex_colors
                         n, _ = vertices.shape
 
-                        src = vtk.vtkPointSource()
-                        src.SetNumberOfPoints(n)
-                        src.Update()
+                        # vedo.Points uses vtk.vtkPolyData() as backend data storage and thus converts
+                        # the input to this type. However, the vedo conversion is quite inefficient, therefore
+                        # we convert the trimesh.PointCloud before passing it to vedo.
+                        # partially from https://github.com/pyvista/utilities/helpers.py
+                        vtkpts = vtk.vtkPoints()
+                        vtk_arr = numpy_to_vtk(vertices, deep=True)
+                        vtkpts.SetData(vtk_arr)
+                        pd = vtk.vtkPolyData()
+                        pd.SetPoints(vtkpts)
 
-                        vgf = vtk.vtkVertexGlyphFilter()
-                        vgf.SetInputData(src.GetOutput())
-                        vgf.Update()
-                        pd = vgf.GetOutput()
-                        pd.GetPoints().SetData(vedo.utils.numpy2vtk(vertices, dtype=float))
+                        # For some reason, vedo requires each vtk.vtkPolyData object to set an internal
+                        # cell array, as it uses the vertices, not the points attribute. As a point cloud
+                        # is unconnected, the offset and connectivity is just the index of the respective point.
+                        carr = vtk.vtkCellArray()
+                        carr.SetData(vedo.numpy2vtk(np.arange(n + 1), dtype="int"),  # offset
+                                     vedo.numpy2vtk(np.arange(n), dtype="int"))  # connectivity
+                        pd.SetVerts(carr)
 
+                        # Set vertex color RGB/RGBA values as active scalar property of the vtk.vtkPolyData.
                         if vertex_colors.shape[1] == 3:
                             ucols = numpy_to_vtk(vertex_colors)
                             ucols.SetName("Points_RGB")
