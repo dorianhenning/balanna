@@ -10,6 +10,7 @@ import trimesh.visual
 import trimesh.viewer
 import time
 import vedo
+import vtk
 
 from functools import partial
 from PIL import Image, ImageQt
@@ -17,6 +18,7 @@ from PyQt5 import Qt
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from typing import Any, Dict, Iterable, List, Optional, Union
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+from vtk.util.numpy_support import numpy_to_vtk
 
 
 __all__ = ['display_scenes', 'display_real_time', 'RealTimeNode']
@@ -123,7 +125,34 @@ class MainWindow(Qt.QMainWindow):
                         meshes_vedo.append(m_vedo)
 
                     elif isinstance(m, trimesh.PointCloud):
-                        m_vedo = vedo.Points(m.vertices, c=m.visual.vertex_colors)
+                        vertices = m.vertices
+                        vertex_colors = m.visual.vertex_colors
+                        n, _ = vertices.shape
+
+                        src = vtk.vtkPointSource()
+                        src.SetNumberOfPoints(n)
+                        src.Update()
+
+                        vgf = vtk.vtkVertexGlyphFilter()
+                        vgf.SetInputData(src.GetOutput())
+                        vgf.Update()
+                        pd = vgf.GetOutput()
+                        pd.GetPoints().SetData(vedo.utils.numpy2vtk(vertices, dtype=float))
+
+                        if vertex_colors.shape[1] == 3:
+                            ucols = numpy_to_vtk(vertex_colors)
+                            ucols.SetName("Points_RGB")
+                            pd.GetPointData().AddArray(ucols)
+                            pd.GetPointData().SetActiveScalars("Points_RGB")
+                        elif vertex_colors.shape[1] == 4:
+                            ucols = numpy_to_vtk(vertex_colors)
+                            ucols.SetName("Points_RGBA")
+                            pd.GetPointData().AddArray(ucols)
+                            pd.GetPointData().SetActiveScalars("Points_RGBA")
+                        else:
+                            print("\033[93m" + f"Invalid point cloud colors, skipping ..." + "\033[0m")
+
+                        m_vedo = vedo.Points(pd)
                         meshes_vedo.append(m_vedo)
 
                     elif isinstance(m, trimesh.path.Path3D):
