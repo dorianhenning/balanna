@@ -12,10 +12,10 @@ REQUIRED = [
 
 setup(
     name='balanna',
-    version='0.5',
-    description='Visualization Tools for Humans and Stuff',
+    version='1.0',
+    description='Visualization Tools for 2D & 3D stuff working out-of-the-box',
     author='Simon Schaefer & Dorian Henning',
-    author_email='dorian.henning@gmail.com',
+    author_email='simon.k.schaefer@gmail.com',
     packages=find_packages(),
     install_requires=REQUIRED,
     python_requires='>=3.8'
