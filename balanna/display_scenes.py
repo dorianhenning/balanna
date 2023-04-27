@@ -27,7 +27,7 @@ from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from vtk.util.numpy_support import numpy_to_vtk
 
 
-__all__ = ['display_scenes', 'display_real_time', 'RealTimeNode']
+__all__ = ['display_scenes', 'display_real_time', 'RealTimeNode', 'SceneDictType']
 
 
 SceneDictType = Dict[str, Any]
@@ -225,8 +225,9 @@ class MainWindow(Qt.QMainWindow):
                         element = np.transpose(element, (1, 2, 0))  # (C, H, W) -> (H, W, C)
                 else:
                     image_mode = "L"
-                img = Image.fromarray(element, mode=image_mode)
-                qt_img = ImageQt.ImageQt(img)
+                    element = np.stack([element] * 3, axis=-1)
+                height, width, _ = element.shape
+                qt_img = Qt.QImage(element.data, width, height, 3 * width, Qt.QImage.Format_RGB888)
                 self.image_widge_dict[key].setPixmap(Qt.QPixmap.fromImage(qt_img))
 
             elif isinstance(element, str):
@@ -305,7 +306,7 @@ class MainWindow(Qt.QMainWindow):
         for key, widget in self.image_widge_dict.items():
             path = directory / key / f"{prefix}.png"
             path.parent.mkdir(parents=True, exist_ok=True)
-            widget.pixmap().toImage().save(path)
+            widget.pixmap().toImage().save(path.as_posix())
             image_paths.append(path)
 
         # Make screenshots of all trimesh scenes, store them and add them to
@@ -429,15 +430,18 @@ class RealTimeNode(QObject):
                 if condition:
                     self.close()
     """
-    finished = pyqtSignal()
     running = pyqtSignal()
     scene_dict_emitter = pyqtSignal(dict)
+
+    def __init__(self):
+        super(QObject, self).__init__()
+        self.__is_finished = False
 
     def callback(self):
         raise NotImplementedError
 
     def run(self):
-        while True:
+        while not self.__is_finished:
             if not self.running:
                 continue
             self.callback()
@@ -445,8 +449,27 @@ class RealTimeNode(QObject):
     def render(self, scene_dict: SceneDictType):
         self.scene_dict_emitter.emit(scene_dict)  # noqa
 
-    def close(self):
-        self.finished.emit()  # noqa
+    def stop(self):
+        self.__is_finished = True
+
+
+class CachingSignals(QObject):
+    finished = pyqtSignal()
+
+
+class CachingNode(Qt.QRunnable):
+
+    def __init__(self, file_path: pathlib.Path, scene_dict: SceneDictType):
+        super(CachingNode, self).__init__()
+        self.file_path = file_path
+        self.scene_dict = scene_dict
+        self.signals = CachingSignals()
+
+    @Qt.pyqtSlot()
+    def run(self):
+        with open(self.file_path, 'wb+') as f:
+            pkl.dump(self.scene_dict, file=f)
+        self.signals.finished.emit()
 
 
 class MainWindowRealTime(MainWindow):
@@ -479,20 +502,23 @@ class MainWindowRealTime(MainWindow):
 
         self.cache_directory = None
         self.__cache_index = 0
+        self.cache_thread_pool = None
         if cache_directory is not None:
             self.cache_directory = pathlib.Path(cache_directory)
             if self.cache_directory.exists():
                 print("\033[93m" + "Cache directory already exists, overwriting it ..." + "\033[0m")
             self.cache_directory.mkdir(exist_ok=True, parents=True)
+            self.cache_thread_pool = Qt.QThreadPool()
+            if self.debug:
+                caching_max_threads = self.cache_thread_pool.maxThreadCount()
+                print("\033[36m" + f"Launched caching thread pool with max. {caching_max_threads} threads" + "\033[0m")
+
 
         # Set up multi-processing pipeline.
-        self.thread = QThread()
+        self.thread = QThread(parent=self)
         self.worker = worker
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
         self.worker.scene_dict_emitter.connect(self.render_)
         self.thread.start()
 
@@ -504,9 +530,14 @@ class MainWindowRealTime(MainWindow):
         # If a cache directory is defined, write the scene dict to a pickle file, one per scene_dict.
         if self.cache_directory is not None:
             cache_file_name = self.cache_directory / f"{self.__cache_index:05d}.pkl"
-            with open(cache_file_name, 'wb+') as f:
-                pkl.dump(scene_dict, file=f)
+            cache_node = CachingNode(cache_file_name, scene_dict)
+            cache_node.signals.finished.connect(partial(self.__caching_complete, cache_file_name))
+            self.cache_thread_pool.start(cache_node)
             self.__cache_index += 1
+
+    def __caching_complete(self, cache_file_name: pathlib.Path):
+        if self.debug:
+            print("\033[36m" + f"Caching complete: {cache_file_name.as_posix()}" + "\033[0m")
 
     def _on_key(self, event_dict) -> None:
         super(MainWindowRealTime, self)._on_key(event_dict)
@@ -518,6 +549,14 @@ class MainWindowRealTime(MainWindow):
     def print_usage():
         MainWindow.print_usage()
         print("\ts: play / pause")
+
+    def on_close(self):
+        super(MainWindowRealTime, self).on_close()
+        self.worker.stop()
+        self.thread.quit()
+        self.thread.wait()
+        if self.cache_thread_pool is not None:
+            self.cache_thread_pool.waitForDone()
 
 
 def display_scenes(
