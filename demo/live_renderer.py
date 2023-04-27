@@ -14,15 +14,15 @@ class DemoNode(RealTimeNode):
         self.k = 0
 
     def callback(self):
-        scene = trimesh.Scene()
-        box_mesh = trimesh.creation.box(bounds=[(-1, -1, 0), (1, 1, 1)])
         T = np.eye(4)
         T[0, 3] = self.k * 0.2
+        image = (np.random.random((3, 240, 240)) * 255).astype(np.uint8)
+
+        scene = trimesh.Scene()
+        box_mesh = trimesh.creation.box(bounds=[(-1, -1, 0), (1, 1, 1)])
         box_mesh = box_mesh.apply_transform(T)
         scene.add_geometry(box_mesh)
-        scene = show_grid(xy_max=T[0, 3] + 10, scene=scene)
-
-        image = (np.random.random((3, 240, 240)) * 255).astype(np.uint8)
+        scene = show_grid(xy_max=20, scene=scene)
 
         self.render({"image": image, "scene": scene})
 

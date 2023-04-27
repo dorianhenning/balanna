@@ -225,7 +225,7 @@ class MainWindow(Qt.QMainWindow):
                 else:
                     element = np.stack([element] * 3, axis=-1)
                 height, width, _ = element.shape
-                qt_img = Qt.QImage(element.data, width, height, 3 * width, Qt.QImage.Format_RGB888)
+                qt_img = Qt.QImage(element.data.tobytes(), width, height, 3 * width, Qt.QImage.Format_RGB888)
                 self.image_widge_dict[key].setPixmap(Qt.QPixmap.fromImage(qt_img))
 
             elif isinstance(element, str):
@@ -438,18 +438,15 @@ class RealTimeNode(QObject):
                 if condition:
                     self.close()
     """
+    is_finished = False
     running = pyqtSignal()
     scene_dict_emitter = pyqtSignal(dict)
-
-    def __init__(self):
-        super(QObject, self).__init__()
-        self.__is_finished = False
 
     def callback(self):
         raise NotImplementedError
 
     def run(self):
-        while not self.__is_finished:
+        while not self.is_finished:
             if not self.running:
                 continue
             self.callback()
@@ -458,7 +455,7 @@ class RealTimeNode(QObject):
         self.scene_dict_emitter.emit(scene_dict)  # noqa
 
     def stop(self):
-        self.__is_finished = True
+        self.is_finished = True
 
 
 class CachingSignals(QObject):
@@ -520,7 +517,6 @@ class MainWindowRealTime(MainWindow):
             if self.debug:
                 caching_max_threads = self.cache_thread_pool.maxThreadCount()
                 print("\033[36m" + f"Launched caching thread pool with max. {caching_max_threads} threads" + "\033[0m")
-
 
         # Set up multi-processing pipeline.
         self.thread = QThread(parent=self)
