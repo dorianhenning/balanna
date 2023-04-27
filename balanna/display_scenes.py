@@ -220,11 +220,9 @@ class MainWindow(Qt.QMainWindow):
 
             elif isinstance(element, np.ndarray) and key in self.image_widge_dict:
                 if len(element.shape) == 3:
-                    image_mode = "RGB"
                     if element.shape[0] == 3:
                         element = np.transpose(element, (1, 2, 0))  # (C, H, W) -> (H, W, C)
                 else:
-                    image_mode = "L"
                     element = np.stack([element] * 3, axis=-1)
                 height, width, _ = element.shape
                 qt_img = Qt.QImage(element.data, width, height, 3 * width, Qt.QImage.Format_RGB888)
@@ -246,6 +244,7 @@ class MainWindow(Qt.QMainWindow):
                 self.figureCanvas[at].draw()
 
             else:
+                print("\033[93m" + f"Invalid element in scene dict of type {type(element)}, skipping ..." + "\033[0m")
                 continue
 
         if self.debug:
