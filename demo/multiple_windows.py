@@ -3,7 +3,7 @@ import trimesh
 import trimesh.creation
 
 from balanna.trimesh import show_grid
-from balanna.display_scenes import display_scenes
+from balanna import display_generated
 
 
 def main():
@@ -27,4 +27,4 @@ def main():
 
 
 if __name__ == '__main__':
-    display_scenes(main(), fps=10)
+    display_generated(main(), fps=10)

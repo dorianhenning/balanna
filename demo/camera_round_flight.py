@@ -5,7 +5,7 @@ import trimesh.path
 
 from balanna.camera_trajectories import create_round_flight
 from balanna.trimesh import show_grid
-from balanna.display_scenes import display_scenes
+from balanna import display_generated
 
 
 def main():
@@ -23,4 +23,4 @@ def main():
 
 
 if __name__ == '__main__':
-    display_scenes(main(), fps=10, use_scene_cam=True)
+    display_generated(main(), fps=10, use_scene_cam=True)
