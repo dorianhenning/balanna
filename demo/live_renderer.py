@@ -3,7 +3,7 @@ import time
 import trimesh
 import trimesh.creation
 
-from balanna.display_scenes import display_real_time, RealTimeNode
+from balanna import display_real_time, RealTimeNode
 from balanna.trimesh import show_grid
 
 

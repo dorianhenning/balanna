@@ -2,7 +2,7 @@ import argparse
 import pathlib
 import pickle as pkl
 
-from balanna.display_scenes import display_scenes
+from balanna.window_dataset import display_dataset
 
 
 def _parse_args():
@@ -31,4 +31,4 @@ def main(args):
 
 if __name__ == '__main__':
     args_ = _parse_args()
-    display_scenes(main(args_), fps=args_.fps)
+    display_dataset(main(args_), fps=args_.fps)

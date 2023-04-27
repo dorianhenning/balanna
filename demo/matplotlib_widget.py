@@ -2,10 +2,9 @@ import numpy as np
 import trimesh
 import trimesh.creation
 import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
 
 from balanna.trimesh import show_grid
-from balanna.display_scenes import display_scenes
+from balanna import display_scenes
 
 
 def main():
