@@ -1,7 +1,6 @@
 import numpy as np
 import trimesh
 import vedo
-import videoio
 
 from typing import List
 
@@ -25,9 +24,9 @@ def render_dataset(
     assert num_scenes.count(num_scenes[0]) == len(num_scenes)  # all scenes have same length
     num_scenes = num_scenes[0]  # length of scene dict
 
-    plotter = vedo.Plotter(num_scenes)
+    plotter = vedo.Plotter((num_scenes, 1), offscreen=True, interactive=False)
     images = []
-    for scene_dict in scenes:
+    for k, scene_dict in enumerate(scenes):
         plotter.clear()
         for i, (key, scene) in enumerate(scene_dict.items()):
             if not isinstance(scene, trimesh.Scene):
@@ -38,8 +37,10 @@ def render_dataset(
                 use_scene_cam=use_scene_cam
             )
             plotter.at(i).show(meshes_vedo, camera=camera_dict)
-        images_i = plotter.screenshot(asarray=True)
-        images.append(images_i)
+        image_k = plotter.screenshot(asarray=True)
+        images.append(image_k)
+        if debug:
+            print("\033[36m" + f"Finished frame {k} with shape {image_k.shape}" + "\033[0m")
 
     plotter.close()
     return np.stack(images)
