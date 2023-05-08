@@ -17,6 +17,17 @@ def render_dataset(
     use_scene_cam: bool = False,
     debug: bool = False
 ):
+    """Render scenes stored in scene iterator to a numpy array (num_frames, H, W, 3).
+
+    The scene iterator yields a dictionary that describes the elements of the scene, one dictionary per frame.
+    Currently, only trimesh scenes are supported.
+
+    Args:
+        scenes: sorted list of scene dictionaries.
+        show_labels: display the scene dict keys.
+        use_scene_cam: use camera transform from trimesh scenes.
+        debug: printing debug information.
+    """
     if len(scenes) == 0:
         return np.zeros((0, 640, 480, 3), dtype=np.uint8)
 
