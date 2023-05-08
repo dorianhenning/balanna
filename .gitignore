@@ -12,3 +12,6 @@ dist/
 # IDE caches.
 .idea/
 *.vim
+
+# Test outputs.
+outputs/
