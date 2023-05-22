@@ -20,7 +20,7 @@ def render_dataset(
     """Render scenes stored in scene iterator to a numpy array (num_frames, H, W, 3).
 
     The scene iterator yields a dictionary that describes the elements of the scene, one dictionary per frame.
-    Currently, only trimesh scenes are supported.
+    See SceneDictType for currently supported object types.
 
     Args:
         scenes: sorted list of scene dictionaries.

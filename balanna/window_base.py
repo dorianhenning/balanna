@@ -23,7 +23,7 @@ from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from balanna.utils.vedo_utils import trimesh_scene_2_vedo
 
-SceneDictType = Dict[str, Any]
+SceneDictType = Dict[str, Union[trimesh.Scene, Axes, str, np.ndarray, vedo.Volume]]
 
 
 class MainWindow(Qt.QMainWindow):
@@ -123,15 +123,13 @@ class MainWindow(Qt.QMainWindow):
         start_time = time.perf_counter()
 
         for key, element in scene_dict.items():
-            if isinstance(element, trimesh.Scene) and key in self.scene_key_dict:
-                at = self.scene_key_dict[key]
+            if isinstance(element, trimesh.Scene):
                 meshes_vedo, camera_dict = trimesh_scene_2_vedo(
                     scene=element,
                     label=key if self.show_labels else None,
                     use_scene_cam=self.use_scene_cam
                 )
-                self.vps[at].clear()
-                self.vps[at].show(meshes_vedo, bg="white", resetcam=resetcam, camera=camera_dict)
+                self.render_scene_at_key_(key, meshes_vedo, resetcam=resetcam, camera_dict=camera_dict)
 
             elif isinstance(element, np.ndarray) and key in self.image_widge_dict:
                 if len(element.shape) == 3:
@@ -158,6 +156,9 @@ class MainWindow(Qt.QMainWindow):
                 # draw figure to update!
                 self.figureCanvas[at].draw()
 
+            elif isinstance(element, vedo.Volume):
+                self.render_scene_at_key_(key, [element], resetcam=resetcam)
+
             else:
                 print("\033[93m" + f"Invalid element in scene dict of type {type(element)}, skipping ..." + "\033[0m")
                 continue
@@ -169,6 +170,21 @@ class MainWindow(Qt.QMainWindow):
         if self.video_directory is not None:
             self.screenshot(self.video_directory, prefix=f"{self.__video_index:05d}")
             self.__video_index += 1
+
+    def render_scene_at_key_(
+        self,
+        key: str,
+        meshes: List[Union[vedo.Mesh, vedo.Volume]],
+        resetcam: bool = False,
+        camera_dict: Optional[Dict[str, np.ndarray]] = None
+    ):
+        if key not in self.scene_key_dict:
+            print("\033[93m" + f"Key {key} not in scene key dicts, skipping ..." + "\033[0m")
+            return
+
+        at = self.scene_key_dict[key]
+        self.vps[at].clear()
+        self.vps[at].show(meshes, bg="white", resetcam=resetcam, camera=camera_dict)
 
     def __align_event(self, event=None, align_id: int = None):  # noqa
         if self.num_scenes < 2:

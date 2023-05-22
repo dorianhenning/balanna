@@ -1,12 +1,12 @@
 import numpy as np
 import pathlib
-import trimesh
 
 from matplotlib.axes import Axes
 from PyQt5 import Qt
 from typing import Iterable, Optional, Union
 
 from .window_base import MainWindow, SceneDictType
+from .utils.types import contains_scene
 
 
 __all__ = ['display_scenes', 'display_generated']
@@ -33,7 +33,7 @@ class MainWindowGenerator(MainWindow):
             return
 
         image_keys = [key for key, value in scene_dict.items() if isinstance(value, np.ndarray)]
-        scene_keys = [key for key, value in scene_dict.items() if isinstance(value, trimesh.Scene)]
+        scene_keys = [key for key, value in scene_dict.items() if contains_scene(value)]
         figure_keys = [key for key, value in scene_dict.items() if isinstance(value, Axes)]
         super(MainWindowGenerator, self).__init__(
             image_keys=image_keys,
@@ -103,7 +103,7 @@ def display_generated(
     """Display scenes stored in scene iterator as PyQt app.
 
     The scene iterator yields a dictionary that describes the elements of the scene, one dictionary per frame.
-    Currently, images (np.array), 3D scenes (trimesh.Scene) and strings (for prinout) are supported.
+    See SceneDictType for currently supported object types.
 
     Args:
         scene_iterator: iterator function to get the scene dictionaries.
