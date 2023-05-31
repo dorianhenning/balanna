@@ -12,8 +12,7 @@ import vedo
 import matplotlib
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qtagg import (
-    FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
 from functools import partial
 from PIL import Image
@@ -89,7 +88,6 @@ class MainWindow(Qt.QMainWindow):
         for _ in figure_keys:
             figure_canvas = FigureCanvas(Figure())
             self.figureCanvas.append(figure_canvas)
-            #vl3.addWidget(NavigationToolbar(figure_canvas, self))
             vl3.addWidget(figure_canvas)
         vl.addLayout(vl3)
 
@@ -146,10 +144,8 @@ class MainWindow(Qt.QMainWindow):
 
             elif isinstance(element, Axes) and key in self.figure_key_dict:
                 at = self.figure_key_dict[key]
-                # have to use this width/height to adjust the size of the axis somehow
-                width, height = self.figureCanvas[at].get_width_height()
                 # clear figure
-                self.figureCanvas[at].figure.clf()
+                self.figureCanvas[at].figure.clear()
                 # set new references of axes element
                 element.figure = self.figureCanvas[at].figure
                 self.figureCanvas[at].figure.add_axes(element)

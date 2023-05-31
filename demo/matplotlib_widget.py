@@ -4,10 +4,11 @@ import trimesh.creation
 import matplotlib.pyplot as plt
 
 from balanna.trimesh import show_grid
-from balanna import display_scenes
+from balanna import display_dataset
 
 
 def main():
+    scenes = []
     for k in range(20):
         scene = trimesh.Scene()
         box_mesh = trimesh.creation.box(bounds=[(-1, -1, 0), (1, 1, 1)])
@@ -24,8 +25,9 @@ def main():
         t = np.linspace(0, 10, 501)
         axes.plot(t, np.sin(t + k * 0.1))
 
-        yield {"scene": scene, "image": image, "figure": axes}
+        scenes.append({"scene": scene, "image": image, "figure": axes})
+    return scenes
 
 
 if __name__ == '__main__':
-    display_scenes(main(), fps=10)
+    display_dataset(main(), fps=10)

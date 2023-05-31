@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 import pathlib
 
@@ -63,7 +64,17 @@ class MainWindowDataset(MainWindow):
     def render_current_index(self, resetcam: bool = False) -> None:
         if 0 <= self.__frame_idx < len(self.scenes):
             scene_dict = self.scenes[self.__frame_idx]
-            self.render_(scene_dict, resetcam=resetcam)
+
+            # The same matplotlib.Axes cannot be used multiple times, as it is assigned to a figure during
+            # plotting. Therefore, we need to create a copy of the scene dictionary to be able to reuse it
+            # when plotting the scene again later.
+            scene_dict_safe = dict()
+            for key, value in scene_dict.items():
+                if key in self.figure_key_dict.keys():
+                    value = copy.deepcopy(value)
+                scene_dict_safe[key] = value
+
+            self.render_(scene_dict_safe, resetcam=resetcam)
         else:
             # Reset frame index to a valid index.
             self.__frame_idx = max(min(self.__frame_idx, len(self.scenes) - 1), 0)
