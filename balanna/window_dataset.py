@@ -1,6 +1,7 @@
 import copy
 import numpy as np
 import pathlib
+import pickle as pkl
 
 from matplotlib.axes import Axes
 from PyQt5 import Qt
@@ -24,6 +25,7 @@ class MainWindowDataset(MainWindow):
         loop: bool = True,
         show_labels: bool = False,
         use_scene_cam: bool = False,
+        store_directory: Optional[Union[pathlib.Path, str]] = None,
         debug: bool = False,
         parent: Qt.QWidget = None
     ):
@@ -50,6 +52,19 @@ class MainWindowDataset(MainWindow):
         )
         self.render_(scene_dict, resetcam=True)
 
+        # If store_directory is given, save the scene list to the directory.
+        if store_directory is not None:
+            print("\033[36m" + f"Storing scene in directory {store_directory}" + "\033[0m")
+            store_directory = pathlib.Path(store_directory)
+            if store_directory.exists():
+                print("\033[33m" + f"Directory {store_directory} already exists, overwriting..." + "\033[0m")
+            store_directory.mkdir(parents=True, exist_ok=True)
+            for k, scene in enumerate(scenes):
+                pkl_file = store_directory / f"{k:05d}.pkl"
+                with open(pkl_file, 'wb') as f:
+                    pkl.dump(scene, f, protocol=pkl.HIGHEST_PROTOCOL)
+            print("\033[36m" + f"... done" + "\033[0m")
+
         # Setup looping timer and connect it to render a new scene at every timer callback.
         # If loop is true, start looping right away.
         self.timer = Qt.QTimer(self)
@@ -68,11 +83,14 @@ class MainWindowDataset(MainWindow):
             # The same matplotlib.Axes cannot be used multiple times, as it is assigned to a figure during
             # plotting. Therefore, we need to create a copy of the scene dictionary to be able to reuse it
             # when plotting the scene again later.
-            scene_dict_safe = dict()
-            for key, value in scene_dict.items():
-                if key in self.figure_key_dict.keys():
-                    value = copy.deepcopy(value)
-                scene_dict_safe[key] = value
+            if any(isinstance(value, Axes) for value in scene_dict.values()):
+                scene_dict_safe = dict()
+                for key, value in scene_dict.items():
+                    if key in self.figure_key_dict.keys():
+                        value = copy.deepcopy(value)
+                    scene_dict_safe[key] = value
+            else:
+                scene_dict_safe = scene_dict
 
             self.render_(scene_dict_safe, resetcam=resetcam)
         else:
@@ -116,6 +134,7 @@ def display_dataset(
     video_directory: Optional[Union[pathlib.Path, str]] = None,
     show_labels: bool = False,
     use_scene_cam: bool = False,
+    store_directory: Optional[Union[pathlib.Path, str]] = None,
     debug: bool = False
 ):
     """Display scenes stored in scene iterator as PyQt app.
@@ -131,6 +150,7 @@ def display_dataset(
         video_directory: directory for storing screenshots.
         show_labels: display the scene dict keys.
         use_scene_cam: use camera transform from trimesh scenes.
+        store_directory: path to directory storing scene pickle files.
         debug: printing debug information.
     """
     app = Qt.QApplication([])
@@ -142,7 +162,8 @@ def display_dataset(
         loop=loop,
         show_labels=show_labels,
         debug=debug,
-        use_scene_cam=use_scene_cam
+        use_scene_cam=use_scene_cam,
+        store_directory=store_directory
     )
     app.aboutToQuit.connect(window.on_close)
     app.exec_()
