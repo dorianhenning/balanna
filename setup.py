@@ -12,7 +12,7 @@ REQUIRED = [
 
 setup(
     name='balanna',
-    version='1.2.1',
+    version='1.3.0',
     description='Visualization Tools for 2D & 3D stuff working out-of-the-box',
     author='Simon Schaefer & Dorian Henning',
     author_email='simon.k.schaefer@gmail.com',
