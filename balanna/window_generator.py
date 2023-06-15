@@ -3,13 +3,13 @@ import pathlib
 
 from matplotlib.axes import Axes
 from PyQt5 import Qt
-from typing import Iterable, Optional, Union
+from typing import Iterable, Optional, Union, Type
 
 from .window_base import MainWindow, SceneDictType
 from .utils.types import contains_scene
 
 
-__all__ = ['display_scenes', 'display_generated']
+__all__ = ['display_scenes', 'display_generated', 'display_generated_custom', 'MainWindowGenerator']
 
 
 class MainWindowGenerator(MainWindow):
@@ -90,6 +90,48 @@ class MainWindowGenerator(MainWindow):
             self.timer.start(int(1 / self.fps * 1000))  # in milliseconds
 
 
+def display_generated_custom(
+    main_window_class: Type[MainWindowGenerator],
+    scene_iterator: Iterable[SceneDictType],
+    horizontal: bool = True,
+    loop: bool = False,
+    fps: float = 30.0,
+    video_directory: Optional[Union[pathlib.Path, str]] = None,
+    show_labels: bool = False,
+    use_scene_cam: bool = False,
+    debug: bool = False
+):
+    """Display scenes stored in scene iterator as PyQt app using custom main window class.
+
+    The scene iterator yields a dictionary that describes the elements of the scene, one dictionary per frame.
+    See SceneDictType for currently supported object types.
+
+    Args:
+        main_window_class: custom main window class.
+        scene_iterator: iterator function to get the scene dictionaries.
+        horizontal: window orientation, horizontal or vertical stacking.
+        loop: start looping from beginning.
+        fps: frames (i.e. scenes) per second for looping.
+        video_directory: directory for storing screenshots.
+        show_labels: display the scene dict keys.
+        use_scene_cam: use camera transform from trimesh scenes.
+        debug: printing debug information.
+    """
+    app = Qt.QApplication([])
+    window = main_window_class(
+        scene_iterator=scene_iterator,
+        fps=fps,
+        video_directory=video_directory,
+        horizontal=horizontal,
+        loop=loop,
+        show_labels=show_labels,
+        debug=debug,
+        use_scene_cam=use_scene_cam
+    )
+    app.aboutToQuit.connect(window.on_close)
+    app.exec_()
+
+
 def display_generated(
     scene_iterator: Iterable[SceneDictType],
     horizontal: bool = True,
@@ -115,19 +157,17 @@ def display_generated(
         use_scene_cam: use camera transform from trimesh scenes.
         debug: printing debug information.
     """
-    app = Qt.QApplication([])
-    window = MainWindowGenerator(
+    return display_generated_custom(
+        main_window_class=MainWindowGenerator,
         scene_iterator=scene_iterator,
-        fps=fps,
-        video_directory=video_directory,
         horizontal=horizontal,
         loop=loop,
+        fps=fps,
+        video_directory=video_directory,
         show_labels=show_labels,
         debug=debug,
         use_scene_cam=use_scene_cam
     )
-    app.aboutToQuit.connect(window.on_close)
-    app.exec_()
 
 
 def display_scenes(*args, **kwargs):
