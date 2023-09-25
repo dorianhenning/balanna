@@ -56,7 +56,13 @@ def trimesh_scene_2_vedo(scene: trimesh.Scene, label: Optional[str] = None, use_
             else:
                 print("\033[93m" + f"Invalid point cloud colors, skipping ..." + "\033[0m")
 
-            m_vedo = vedo.Points(pd)
+            # Extract the point size from the trimesh.PointCloud metadata, if available.
+            point_size = 4
+            if "point_size" in m.metadata:
+                point_size = m.metadata["point_size"]
+            print(point_size)
+
+            m_vedo = vedo.Points(pd, r=point_size)
             meshes_vedo.append(m_vedo)
 
         elif isinstance(m, trimesh.path.Path3D):

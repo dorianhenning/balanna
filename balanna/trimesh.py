@@ -121,6 +121,7 @@ def show_point_cloud(
     transform: np.ndarray = np.eye(4),
     colors: Optional[np.ndarray] = None,
     name: Optional[str] = None,
+    point_size: float = 0.01,
     scene: Optional[trimesh.Scene] = None
 ) -> trimesh.Scene:
     """Add vertices as trimesh point cloud to the scene.
@@ -133,6 +134,7 @@ def show_point_cloud(
         transform: transform point cloud before adding it to scene (4, 4).
         colors: RGB color for each point (..., 3) as uint8 color 0...255..
         name: scene node name of point cloud mesh.
+        point_size: point size.
         scene: scene to add point cloud mesh to, if None a new scene will be created.
     """
     if scene is None:
@@ -144,7 +146,7 @@ def show_point_cloud(
     if colors is None:
         colors = np.zeros((len(vertices_flat), 3))
         colors[:, 0] = 255  # default = red
-    pc = trimesh.PointCloud(vertices_flat, colors=colors)
+    pc = trimesh.PointCloud(vertices_flat, colors=colors, metadata={"point_size": point_size})
     scene.add_geometry(pc, transform=transform, node_name=name)
     return scene
 

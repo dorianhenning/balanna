@@ -14,7 +14,7 @@ def main():
 
     scenes = []
     for k in range(num_time_steps):
-        scene = show_point_cloud(pcs[k], colors=colors[k])
+        scene = show_point_cloud(pcs[k], colors=colors[k], point_size=1.0)
         scene = show_grid(-10, 10, alpha=100, scene=scene)
         scene = show_camera(T_W_C[k], scene=scene)
         scenes.append({'scene': scene})
