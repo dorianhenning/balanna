@@ -121,7 +121,7 @@ def show_point_cloud(
     transform: np.ndarray = np.eye(4),
     colors: Optional[np.ndarray] = None,
     name: Optional[str] = None,
-    point_size: float = 0.01,
+    point_size: float = 4,
     scene: Optional[trimesh.Scene] = None
 ) -> trimesh.Scene:
     """Add vertices as trimesh point cloud to the scene.

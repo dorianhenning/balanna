@@ -60,7 +60,6 @@ def trimesh_scene_2_vedo(scene: trimesh.Scene, label: Optional[str] = None, use_
             point_size = 4
             if "point_size" in m.metadata:
                 point_size = m.metadata["point_size"]
-            print(point_size)
 
             m_vedo = vedo.Points(pd, r=point_size)
             meshes_vedo.append(m_vedo)

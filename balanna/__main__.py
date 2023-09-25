@@ -1,13 +1,16 @@
 import argparse
+import numpy as np
 import pathlib
 import pickle as pkl
 
+from balanna.trimesh import show_point_cloud
 from balanna.window_dataset import display_dataset
 
 
 def _parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("directory", type=pathlib.Path, help="cached data directory")
+    parser.add_argument("mode", choices=["pointcloud", "scenes"])
+    parser.add_argument("directory", type=pathlib.Path, help="Data directory or file")
     parser.add_argument("--fps", type=int, help="displaying fps", default=10)
     parser.add_argument("--use-scene-cam", action="store_true", help="use scene camera")
     return parser.parse_args()
@@ -15,17 +18,33 @@ def _parse_args():
 
 def main(args):
     if not args.directory.exists():
-        raise NotADirectoryError(f"Input directory {args.directory} not found")
+        raise FileNotFoundError(f"Input directory {args.directory} not found")
 
-    files = sorted(list(args.directory.glob("*.pkl")))
-    if len(files) == 0:
-        raise FileNotFoundError(f"No .pkl files found, invalid or empty cache directory")
+    # Check if input is a single file or a directory of files.
+    if args.directory.is_file():
+        files = [args.directory]
+    else:
+        suffix = ".txt" if args.mode == "pointcloud" else ".pkl"
+        files = sorted(list(args.directory.glob("*" + suffix)))
+        if len(files) == 0:
+            raise FileNotFoundError(f"No files found, invalid or empty cache directory {args.directory}")
 
+    # Load and process files into scenes.
     scenes = []
-    for k, file in enumerate(files):
-        with open(file, 'rb') as f:
-            scene_dict = pkl.load(f)
-        scenes.append(scene_dict)
+    if args.mode == "pointcloud":
+        for k, file in enumerate(files):
+            point_cloud = np.loadtxt(file).reshape(-1, 6)
+            scene = show_point_cloud(point_cloud[:, :3], colors=point_cloud[:, 3:])
+            scenes.append({'scene': scene})
+
+    elif args.mode == "scenes":
+        for k, file in enumerate(files):
+            with open(file, 'rb') as f:
+                scene_dict = pkl.load(f)
+            scenes.append(scene_dict)
+    else:
+        raise ValueError(f"Invalid displaying mode {args.mode}")
+
     return scenes
 
 
