@@ -3,6 +3,7 @@ import numpy as np
 import pathlib
 import pickle as pkl
 
+from balanna.json_parser import load_scene_from_json
 from balanna.trimesh import show_point_cloud
 from balanna.window_dataset import display_dataset
 
@@ -44,8 +45,8 @@ def main(args):
             scenes.append(scene_dict)
     elif args.mode == "json":
         for k, file in enumerate(files):
-            scene_dict = load_scene_from_json(file)
-            scenes.append(scene_dict)
+            scene = load_scene_from_json(file)
+            scenes.append({'scene': scene})
     else:
         raise ValueError(f"Invalid displaying mode {args.mode}")
 
