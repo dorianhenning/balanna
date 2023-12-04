@@ -3,13 +3,14 @@ import numpy as np
 import pathlib
 import pickle as pkl
 
+from balanna.json_parser import load_scene_from_json
 from balanna.trimesh import show_point_cloud
 from balanna.window_dataset import display_dataset
 
 
 def _parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=["pointcloud", "scenes"])
+    parser.add_argument("mode", choices=["pointcloud", "scenes", "json"])
     parser.add_argument("directory", type=pathlib.Path, help="Data directory or file")
     parser.add_argument("--fps", type=int, help="displaying fps", default=10)
     parser.add_argument("--use-scene-cam", action="store_true", help="use scene camera")
@@ -42,6 +43,10 @@ def main(args):
             with open(file, 'rb') as f:
                 scene_dict = pkl.load(f)
             scenes.append(scene_dict)
+    elif args.mode == "json":
+        for k, file in enumerate(files):
+            scene = load_scene_from_json(file)
+            scenes.append({'scene': scene})
     else:
         raise ValueError(f"Invalid displaying mode {args.mode}")
 

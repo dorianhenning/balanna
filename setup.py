@@ -4,9 +4,11 @@ from setuptools import setup, find_packages
 REQUIRED = [
     'numpy>=1.21',
     'trimesh[easy]>=3.16.0',
+    'scipy',
     'vedo',
     'PyQt5',
-    'image_grid'
+    'image_grid',
+    'loguru',
     # 'opencv-python-headless'
 ]
 
