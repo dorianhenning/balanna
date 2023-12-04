@@ -14,7 +14,7 @@ REQUIRED = [
 
 setup(
     name='balanna',
-    version='2.0.0',
+    version='2.1.0',
     description='Visualization Tools for 2D & 3D stuff working out-of-the-box',
     author='Simon Schaefer & Dorian Henning',
     author_email='simon.k.schaefer@gmail.com',
