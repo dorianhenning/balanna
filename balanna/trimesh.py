@@ -259,3 +259,77 @@ def show_axes(
     for tf, size in zip(transforms, sizes):
         scene = show_axis(tf, size=size, scene=scene)
     return scene
+
+
+def show_sphere(center: np.ndarray, radius: float, color: Tuple[float, float, float], scene: trimesh.Scene
+                ) -> trimesh.Scene:
+    """Add a sphere to the scene.
+
+    Args:
+        center: sphere center coordinates (3).
+        radius: sphere radius.
+        color: RGB sphere color in 0...255 (3).
+        scene: scene to add sphere to.
+    """
+    if scene is None:
+        scene = trimesh.Scene()
+    if radius < 0.01:
+        raise ValueError(f"Invalid sphere radius {radius}, must be > 0.01")
+
+    sphere = trimesh.creation.uv_sphere(radius=radius)
+    color_uint8 = np.array(color, dtype=np.uint8)
+    sphere.visual.face_colors = np.repeat(color_uint8[None, :], len(sphere.faces), axis=0)
+    sphere.apply_translation(center)
+
+    scene.add_geometry(sphere)
+    return scene
+
+
+def show_capsule(p1: np.ndarray, p2: np.ndarray, radius: float, color: Tuple[float, float, float], scene: trimesh.Scene
+                 ) -> trimesh.Scene:
+    """Add a capsule to the scene.
+
+    Args:
+        p1: capsule start point (3).
+        p2: capsule end point (3).
+        radius: capsule radius.
+        color: RGB capsule color in 0...255 (3).
+        scene: scene to add capsule to.
+    """
+    if scene is None:
+        scene = trimesh.Scene()
+    if radius < 0.01:
+        raise ValueError(f"Invalid capsule radius {radius}, must be > 0.01")
+    if np.allclose(p1, p2):
+        raise ValueError(f"Invalid capsule points {p1}, {p2}, must be different")
+
+    # The canonical capsule primitive is defined as a cylinder with its z-axis aligned with the world z-axis.
+    # It is determined by a single point P in the center of the cylinder and a height h.
+    # This function computes the transformation from this canonical capsule to the capsule defined here from the
+    # points p1 and p2. The canonical representation is given by:
+    # - The origin of the capsule (P = center).
+    # - The height of the capsule (h).
+    # - The radius of the capsule (r).
+    # - The orientation from the canonical representation (Rc).
+    dp = p2 - p1
+    height = np.linalg.norm(dp)
+    z_axis = np.array([0, 0, 1])
+    dp_normed = dp / height
+
+    # To compute the rotation matrix that rotates the z-axis to dp, we use the Rodrigues formula.
+    # See https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d
+    v = np.cross(z_axis, dp_normed)
+    s = np.linalg.norm(v)
+    c = np.dot(z_axis, dp_normed)
+    vx = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])  # skew-symmetric matrix of v
+
+    Rc = np.eye(3) + vx + np.matmul(vx, vx) * (1 - c) / (s ** 2 + 1e-6)  # Rodrigues formula
+    center = p1 + dp / 2  # equals P
+
+    Tz = np.eye(4)
+    Tz[:3, 3] = center
+    Tz[:3, :3] = Rc
+
+    capsule_mesh = trimesh.creation.capsule(radius=radius, height=height, transform=Tz)
+    scene.add_geometry(capsule_mesh)
+    return scene
