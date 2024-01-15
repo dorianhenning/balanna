@@ -102,7 +102,7 @@ class MainWindowDataset(MainWindow):
 
     def _on_key(self, event_dict) -> None:
         super(MainWindowDataset, self)._on_key(event_dict)
-        key_pressed = event_dict["keyPressed"]
+        key_pressed = event_dict["keypress"]
         if key_pressed == "s":
             self.toggle_looping()
         elif key_pressed == "n" and not self.timer.isActive():

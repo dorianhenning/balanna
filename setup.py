@@ -5,7 +5,7 @@ REQUIRED = [
     'numpy>=1.21',
     'trimesh[easy]>=3.16.0',
     'scipy',
-    'vedo',
+    'vedo>=2023.5.0',
     'PyQt5',
     'image_grid',
     'loguru',

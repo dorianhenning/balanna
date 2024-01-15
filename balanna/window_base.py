@@ -198,12 +198,12 @@ class MainWindow(Qt.QMainWindow):
         However, this case will only occur if the window contains no vedo panel. Thus, duplicated calling of
         the key callback is not an issue.
         """
-        event_dict = {"keyPressed": chr(event.key()).lower()}
+        event_dict = {"keypress": chr(event.key()).lower()}
         self._on_key(event_dict)
         event.accept()
 
     def _on_key(self, event_dict) -> None:
-        key_pressed = event_dict["keyPressed"]
+        key_pressed = event_dict["keypress"]
         if key_pressed == "z":
             if self.num_scenes > 0:
                 self.vps[0].render(resetcam=True)

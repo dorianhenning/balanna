@@ -15,7 +15,7 @@ class MyMainWindow(MainWindowGenerator):
 
     def _on_key(self, event_dict) -> None:
         super(MyMainWindow, self)._on_key(event_dict)
-        key_pressed = event_dict["keyPressed"]
+        key_pressed = event_dict["keypress"]
         if key_pressed == "u":
             self._toggle = not self._toggle
             self.render_next_scene()
