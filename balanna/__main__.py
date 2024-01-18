@@ -2,6 +2,7 @@ import argparse
 import numpy as np
 import pathlib
 import pickle as pkl
+import tqdm
 
 from balanna.json_parser import load_scene_from_json
 from balanna.trimesh import show_point_cloud
@@ -25,7 +26,12 @@ def main(args):
     if args.directory.is_file():
         files = [args.directory]
     else:
-        suffix = ".txt" if args.mode == "pointcloud" else ".pkl"
+        if args.mode == "json":
+            suffix = ".json"
+        elif args.mode == "pointcloud":
+            suffix = ".txt"
+        else:
+            suffix = ".pkl"
         files = sorted(list(args.directory.glob("*" + suffix)))
         if len(files) == 0:
             raise FileNotFoundError(f"No files found, invalid or empty cache directory {args.directory}")
@@ -44,9 +50,9 @@ def main(args):
                 scene_dict = pkl.load(f)
             scenes.append(scene_dict)
     elif args.mode == "json":
-        for k, file in enumerate(files):
-            scene = load_scene_from_json(file)
-            scenes.append({'scene': scene})
+        for k, file in tqdm.tqdm(enumerate(files), total=len(files)):
+            scene_dict = load_scene_from_json(file)
+            scenes.append(scene_dict)
     else:
         raise ValueError(f"Invalid displaying mode {args.mode}")
 

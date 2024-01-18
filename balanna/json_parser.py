@@ -81,6 +81,7 @@ def load_scene_from_json(file_path: Path):
     with open(file_path) as f:
         data = json.load(f)
 
+    scene_dict = dict()
     scene = trimesh.Scene()
     for name, values in data.items():
         if "type" not in values:
@@ -118,7 +119,7 @@ def load_scene_from_json(file_path: Path):
             scene = show_capsule(p1, p2, radius, color=color, scene=scene)
 
         elif object_type == "sphere":
-            radius = 0.1  # values.get("radius", None)
+            radius = values.get("radius", None)
             if radius is None:
                 logger.warning(f"Invalid sphere object {name}, no radius found, skipping")
                 continue
@@ -129,8 +130,19 @@ def load_scene_from_json(file_path: Path):
             color = __parse_colors(values, "color")
             scene = show_sphere(center, radius, color=color, scene=scene)
 
+        elif object_type == "message":
+            title = values.get("title", "info")
+            text = values.get("text", None)
+            if text is None:
+                logger.warning(f"Invalid text object {name}, no text found, skipping")
+                continue
+            scene_dict[title] = text
+
         else:
             logger.warning(f"Invalid object {name}, unknown type {object_type}, skipping")
             continue
 
-    return scene
+    if "scene" in scene_dict:
+        logger.warning(f"Scene dict already has a `scene` key, overwriting")
+    scene_dict["scene"] = scene
+    return scene_dict
