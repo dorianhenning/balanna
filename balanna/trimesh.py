@@ -6,6 +6,24 @@ import trimesh.creation
 from typing import List, Optional, Tuple, Union
 
 
+__all__ = [
+    "show_mesh",
+    "show_grid",
+    "show_point_cloud",
+    "show_trajectory",
+    "show_camera",
+    "show_axis",
+    "show_axes",
+    "show_sphere",
+    "show_capsule"
+]
+
+
+RGBType = Tuple[int, int, int]
+RGBAType = Tuple[int, int, int, int]
+RGBorRGBAType = Union[RGBAType, RGBType]
+
+
 def show_mesh(
     vertices: np.ndarray,
     faces: np.ndarray,
@@ -53,8 +71,8 @@ def show_grid(
     z: float = 0.0,
     resolution: float = 1.0,
     alpha: float = 255,
-    dark_color: Tuple[float, float, float] = (120, 120, 120),
-    light_color: Tuple[float, float, float] = (255, 255, 255),
+    dark_color: RGBAType = (120, 120, 120),
+    light_color: RGBAType = (255, 255, 255),
     transform: np.ndarray = np.eye(4),
     scene: trimesh.Scene = None
 ) -> trimesh.Scene:
@@ -153,8 +171,7 @@ def show_point_cloud(
 
 def show_trajectory(
     trajectory: np.ndarray,
-    colors: Tuple[float, float, float] = (255, 0, 0),
-    alpha: int = 255,
+    colors: RGBorRGBAType = (255, 0, 0),
     fade_out: bool = False,
     scene: Optional[trimesh.Scene] = None
 ) -> trimesh.Scene:
@@ -185,10 +202,12 @@ def show_trajectory(
     num_points = trajectory.shape[0]
     entities = [trimesh.path.entities.Line([j, j + 1]) for j in range(num_points - 1)]
 
+    alpha = colors[-1] if len(colors) == 4 else 255
+    colors_rgb = colors[:3]
     if fade_out:
-        entity_colors = [(*colors, alpha * ((k + 2) / num_points)) for k in range(num_points - 1)]
+        entity_colors = [(*colors_rgb, alpha * ((k + 2) / num_points)) for k in range(num_points - 1)]
     else:
-        entity_colors = [(*colors, alpha) for _ in range(num_points - 1)]
+        entity_colors = [(*colors_rgb, alpha) for _ in range(num_points - 1)]
     path = trimesh.path.Path3D(entities=entities, vertices=trajectory, colors=entity_colors, process=False)
 
     scene.add_geometry(path)
@@ -261,23 +280,32 @@ def show_axes(
     return scene
 
 
-def show_sphere(center: np.ndarray, radius: float, color: Tuple[float, float, float], scene: trimesh.Scene
-                ) -> trimesh.Scene:
+def show_sphere(
+    center: np.ndarray, 
+    radius: float, 
+    color: RGBorRGBAType, 
+    scene: trimesh.Scene,
+    count: Optional[Tuple[int, int]] = None
+) -> trimesh.Scene:
     """Add a sphere to the scene.
 
     Args:
         center: sphere center coordinates (3).
         radius: sphere radius.
-        color: RGB sphere color in 0...255 (3).
+        color: RGB / RGBA sphere color in 0...255 (3/4).
         scene: scene to add sphere to.
+        count: sphere resolution as number of latitude and longitude lines (2).
     """
     if scene is None:
         scene = trimesh.Scene()
     if radius < 0.01:
         raise ValueError(f"Invalid sphere radius {radius}, must be > 0.01")
+    if count is not None and (count[0] < 3 or count[1] < 3):
+        raise ValueError(f"Invalid sphere count {count}, must be >= 3")
 
-    sphere = trimesh.creation.uv_sphere(radius=radius)
+    sphere = trimesh.creation.uv_sphere(radius=radius, count=count)
     color_uint8 = np.array(color, dtype=np.uint8)
+    
     sphere.visual.face_colors = np.repeat(color_uint8[None, :], len(sphere.faces), axis=0)
     sphere.apply_translation(center)
 
@@ -285,8 +313,14 @@ def show_sphere(center: np.ndarray, radius: float, color: Tuple[float, float, fl
     return scene
 
 
-def show_capsule(p1: np.ndarray, p2: np.ndarray, radius: float, color: Tuple[float, float, float], scene: trimesh.Scene
-                 ) -> trimesh.Scene:
+def show_capsule(
+    p1: np.ndarray, 
+    p2: np.ndarray, 
+    radius: float, 
+    color: RGBorRGBAType, 
+    scene: trimesh.Scene,
+    count: Optional[Tuple[int, int]] = None
+) -> trimesh.Scene:
     """Add a capsule to the scene.
 
     Args:
@@ -295,6 +329,7 @@ def show_capsule(p1: np.ndarray, p2: np.ndarray, radius: float, color: Tuple[flo
         radius: capsule radius.
         color: RGB capsule color in 0...255 (3).
         scene: scene to add capsule to.
+        count: sphere resolution as number of latitude and longitude lines (2).
     """
     if scene is None:
         scene = trimesh.Scene()
@@ -302,6 +337,8 @@ def show_capsule(p1: np.ndarray, p2: np.ndarray, radius: float, color: Tuple[flo
         raise ValueError(f"Invalid capsule radius {radius}, must be > 0.01")
     if np.allclose(p1, p2):
         raise ValueError(f"Invalid capsule points {p1}, {p2}, must be different")
+    if count is not None and (count[0] < 3 or count[1] < 3):
+        raise ValueError(f"Invalid sphere count {count}, must be >= 3")
 
     # The canonical capsule primitive is defined as a cylinder with its z-axis aligned with the world z-axis.
     # It is determined by a single point P in the center of the cylinder and a height h.
@@ -330,6 +367,11 @@ def show_capsule(p1: np.ndarray, p2: np.ndarray, radius: float, color: Tuple[flo
     Tz[:3, 3] = center
     Tz[:3, :3] = Rc
 
-    capsule_mesh = trimesh.creation.capsule(radius=radius, height=height, transform=Tz)
+    capsule_mesh = trimesh.creation.capsule(radius=radius, height=height, transform=Tz, count=count)
+
+    # Add color to capsule.
+    color_uint8 = np.array(color, dtype=np.uint8)
+    capsule_mesh.visual.face_colors = np.repeat(color_uint8[None, :], len(capsule_mesh.faces), axis=0)
+
     scene.add_geometry(capsule_mesh)
     return scene

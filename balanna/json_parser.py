@@ -5,22 +5,27 @@ import trimesh
 from loguru import logger
 from pathlib import Path
 from scipy.spatial.transform import Rotation
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
-from balanna.trimesh import show_trajectory, show_axis, show_capsule, show_sphere
+from balanna.trimesh import show_trajectory, show_axis, show_capsule, show_sphere, RGBorRGBAType
 
 
-def __parse_colors(json_dict: Dict[str, List], key: str = "color", default: Tuple[float, float, float] = (1, 0, 0)
-                   ) -> Tuple[float, float, float]:
+def __parse_colors(json_dict: Dict[str, List], key: str = "color", default: Tuple[int, int, int] = (255, 0, 0)
+                   ) -> RGBorRGBAType:
     if key not in json_dict:
         logger.debug(f"Color not found, using default color {default} using key {key}")
         return default
-    if len(json_dict[key]) != 3:
+    if len(json_dict[key]) not in [3, 4]:
         logger.debug(f"Invalid color {json_dict[key]}, using default color {default}")
         return default
+
     red = int(json_dict[key][0] * 255)
     green = int(json_dict[key][1] * 255)
     blue = int(json_dict[key][2] * 255)
+
+    if len(json_dict[key]) == 4:
+        alpha = int(json_dict[key][3] * 255)
+        return red, green, blue, alpha
     return red, green, blue
 
 
@@ -77,6 +82,21 @@ def __parse_poses(json_dict: Dict[str, List], key: str = "poses") -> Optional[np
     return poses
 
 
+def __parse_lines_count(json_dict: Dict[str, List]) -> int:
+    latitude = json_dict.get("countLatitude", None)
+    longitude = json_dict.get("countLongitude", None)
+    if latitude is None or longitude is None:
+        logger.debug(f"Count not found, returning None")
+        return None
+    if not isinstance(latitude, int) or not isinstance(longitude, int):
+        logger.debug(f"Invalid count {latitude, longitude}, must be integers, returning None")
+        return None
+    if latitude < 3 or longitude < 3:
+        logger.debug(f"Invalid count {latitude, longitude}, must be >= 3, returning None")
+        return None
+    return latitude, longitude
+
+
 def load_scene_from_json(file_path: Path):
     with open(file_path) as f:
         data = json.load(f)
@@ -116,19 +136,21 @@ def load_scene_from_json(file_path: Path):
                 logger.warning(f"Invalid capsule object {name}, no p1/p2 found, skipping")
                 continue
             color = __parse_colors(values, "color")
-            scene = show_capsule(p1, p2, radius, color=color, scene=scene)
+            count = __parse_lines_count(values)
+            scene = show_capsule(p1, p2, radius, color=color, scene=scene, count=count)
 
         elif object_type == "sphere":
             radius = values.get("radius", None)
             if radius is None:
                 logger.warning(f"Invalid sphere object {name}, no radius found, skipping")
-                continue
+                continue            
             center = __parse_position(values, "center")
             if center is None:
                 logger.warning(f"Invalid sphere object {name}, no center found, skipping")
                 continue
+            count = __parse_lines_count(values)
             color = __parse_colors(values, "color")
-            scene = show_sphere(center, radius, color=color, scene=scene)
+            scene = show_sphere(center, radius, color=color, scene=scene, count=count)
 
         elif object_type == "message":
             title = values.get("title", "info")
