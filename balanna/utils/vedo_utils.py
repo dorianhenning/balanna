@@ -13,10 +13,28 @@ def trimesh_scene_2_vedo(scene: trimesh.Scene, label: Optional[str] = None, use_
     meshes_vedo = []
     for m in scene.geometry.values():
         if isinstance(m, trimesh.Trimesh):
-            m_vedo = vedo.trimesh2vedo(m)
-            if m.visual.kind == "vertex":
-                face_colors = trimesh.visual.color.vertex_to_face_color(m.visual.vertex_colors, m.faces)
-                m_vedo.cellIndividualColors(face_colors)
+            m_type = str(type(m))
+            
+            # Due to the a bug in `vedo.trimesh2vedo`, face colors with alpha < 255 are not mapped correctly. 
+            # Therefore, we convert these objects to vedo by ourselves.
+            if "Trimesh" in m_type and m.visual.kind == "face":
+                poly = vedo.utils.buildPolyData(m.vertices, m.faces)
+                trim_c = m.visual.face_colors
+                m_vedo = vedo.Mesh(poly)
+
+                is_same_color = len(np.unique(trim_c, axis=0)) < 2  # all vtxs have same color
+                if is_same_color:
+                    trim_c = trim_c / 255  # uint -> float colors
+                    m_vedo.c(trim_c[0, [0, 1, 2]]).alpha(trim_c[0, 3])
+                else:
+                    m_vedo.cellcolors = trim_c
+            
+            else:
+                m_vedo: vedo.Mesh = vedo.trimesh2vedo(m)
+                if m.visual.kind == "vertex":
+                    face_colors = trimesh.visual.color.vertex_to_face_color(m.visual.vertex_colors, m.faces)
+                    m_vedo.cellIndividualColors(face_colors)
+
             meshes_vedo.append(m_vedo)
 
         elif isinstance(m, trimesh.PointCloud):
