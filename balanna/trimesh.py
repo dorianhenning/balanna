@@ -171,7 +171,7 @@ def show_point_cloud(
 
 def show_trajectory(
     trajectory: np.ndarray,
-    colors: RGBorRGBAType = (255, 0, 0),
+    colors: Union[RGBorRGBAType, np.ndarray] = (255, 0, 0),
     fade_out: bool = False,
     scene: Optional[trimesh.Scene] = None
 ) -> trimesh.Scene:
@@ -179,7 +179,7 @@ def show_trajectory(
 
     Args:
         trajectory: path to be drawn (N, 3).
-        colors: path color (uniformly colored line) as RGB tuple.
+        colors: path color (tuple for uniformly colored line as RGB(-A) tuple & array for segment-wise color).
         alpha: path alpha value. If fade_out, max alpha value.
         fade_out: fade out line by linearly decreasing the alpha value along the path length.
         scene: scene to add path to, if None a new scene will be created.
@@ -202,14 +202,36 @@ def show_trajectory(
     num_points = trajectory.shape[0]
     entities = [trimesh.path.entities.Line([j, j + 1]) for j in range(num_points - 1)]
 
-    alpha = colors[-1] if len(colors) == 4 else 255
-    colors_rgb = colors[:3]
-    if fade_out:
-        entity_colors = [(*colors_rgb, alpha * ((k + 2) / num_points)) for k in range(num_points - 1)]
-    else:
-        entity_colors = [(*colors_rgb, alpha) for _ in range(num_points - 1)]
-    path = trimesh.path.Path3D(entities=entities, vertices=trajectory, colors=entity_colors, process=False)
+    if isinstance(colors, tuple):
+        alpha = colors[-1] if len(colors) == 4 else 255
+        colors_rgb = colors[:3]
 
+        alphas = [alpha * ((k + 2) / num_points) if fade_out else alpha for k in range(num_points - 1)]
+        entity_colors = [(*colors_rgb, alphas[k]) for k in range(num_points - 1)]
+
+    elif isinstance(colors, np.ndarray):
+        if colors.dtype != np.uint8:
+            raise ValueError(f"Invalid colors dtype, expected uint8, got {colors.dtype}")
+        if len(colors) != num_points - 1:
+            raise ValueError(f"Invalid colors length, expected {num_points - 1}, got {len(colors)}")
+        if len(colors.shape) != 2:
+            raise ValueError(f"Invalid colors shape, expected (N-1, 3/4), got {colors.shape}")
+
+        if colors.shape[1] == 3:
+            colors_rgb = colors
+            alphas = [255 *(k + 2) / num_points if fade_out else 255 for k in range(num_points - 1)]
+        elif colors.shape[1] == 4:
+            if fade_out:
+                raise ValueError("Fade out not supported for RGBA colors")
+            colors_rgb = colors[:, :3]
+            alphas = colors[:, 3]
+        else:
+            raise ValueError(f"Invalid colors shape, expected (N-1, 3/4), got {colors.shape}")
+        
+        entity_colors = [(*colors_rgb[k], alphas[k]) for k in range(num_points - 1)]
+
+    # The vertices must be copied, otherwise the original trajectory might be overwritten afterwards.
+    path = trimesh.path.Path3D(entities=entities, vertices=trajectory.copy(), colors=entity_colors, process=False)
     scene.add_geometry(path)
     return scene
 

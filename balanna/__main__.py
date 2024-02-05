@@ -50,7 +50,7 @@ def main(args):
                 scene_dict = pkl.load(f)
             scenes.append(scene_dict)
     elif args.mode == "json":
-        for k, file in tqdm.tqdm(enumerate(files), total=len(files)):
+        for k, file in enumerate(files):
             scene_dict = load_scene_from_json(file)
             scenes.append(scene_dict)
     else:
