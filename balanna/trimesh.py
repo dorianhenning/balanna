@@ -15,7 +15,8 @@ __all__ = [
     "show_axis",
     "show_axes",
     "show_sphere",
-    "show_capsule"
+    "show_capsule",
+    "show_cylinder"
 ]
 
 
@@ -396,4 +397,41 @@ def show_capsule(
     capsule_mesh.visual.face_colors = np.repeat(color_uint8[None, :], len(capsule_mesh.faces), axis=0)
 
     scene.add_geometry(capsule_mesh)
+    return scene
+
+
+def show_cylinder(
+    T: np.ndarray,
+    radius: float,
+    height: float,
+    color: RGBorRGBAType,
+    scene: trimesh.Scene,
+    count: Optional[int] = None
+) -> trimesh.Scene:
+    """Add a cylinder to the scene.
+
+    Args:
+        T: center pose as transformation matrix (4, 4).
+        radius: cylinder radius.
+        height: cylinder height (along body z-axis, height / 2 above and below origin).
+        color: RGB capsule color in 0...255 (3).
+        scene: scene to add capsule to.
+        count: How many pie wedges should the cylinder have
+    """
+    if scene is None:
+        scene = trimesh.Scene()
+    if radius < 0.01:
+        raise ValueError(f"Invalid cylinder radius {radius}, must be > 0.01")
+    if height < 0.01:
+        raise ValueError(f"Invalid cylinder height {height}, must be > 0.01")
+    if count is not None and count < 3:
+        raise ValueError(f"Invalid cylinder count {count}, must be >= 3")
+
+    cylinder_mesh = trimesh.creation.cylinder(radius=radius, height=height, transform=T, count=count)
+
+    # Add color to cylinder.
+    color_uint8 = np.array(color, dtype=np.uint8)
+    cylinder_mesh.visual.face_colors = np.repeat(color_uint8[None, :], len(cylinder_mesh.faces), axis=0)
+
+    scene.add_geometry(cylinder_mesh)
     return scene

@@ -7,7 +7,7 @@ from pathlib import Path
 from scipy.spatial.transform import Rotation
 from typing import Dict, List, Optional, Tuple, Union
 
-from balanna.trimesh import show_trajectory, show_axis, show_capsule, show_sphere, RGBorRGBAType
+from balanna.trimesh import show_trajectory, show_axis, show_capsule, show_cylinder, show_sphere, RGBorRGBAType
 
 
 def __parse_colors(json_dict: Dict[str, List], key: str = "color", default: Tuple[int, int, int] = (255, 0, 0)
@@ -64,6 +64,17 @@ def __parse_pose(json_dict: Dict[str, List]) -> Optional[np.ndarray]:
     return np.concatenate((position, orientation))
 
 
+def __parse_transform(json_dict: Dict[str, List]) -> Optional[np.ndarray]:
+    pose = __parse_pose(json_dict)
+    if pose is None:
+        return None
+
+    transform = np.eye(4)
+    transform[:3, :3] = Rotation.from_quat(pose[3:]).as_matrix()
+    transform[:3, 3] = pose[:3]
+    return transform
+
+
 def __parse_poses(json_dict: Dict[str, List], key: str = "poses") -> Optional[np.ndarray]:
     if key not in json_dict:
         logger.debug(f"Array of positions not found in {json_dict} using key {key}")
@@ -82,7 +93,7 @@ def __parse_poses(json_dict: Dict[str, List], key: str = "poses") -> Optional[np
     return poses
 
 
-def __parse_lines_count(json_dict: Dict[str, List]) -> int:
+def __parse_lines_count(json_dict: Dict[str, List]) -> Optional[Tuple[int, int]]:
     latitude = json_dict.get("countLatitude", None)
     longitude = json_dict.get("countLongitude", None)
     if latitude is None or longitude is None:
@@ -117,12 +128,9 @@ def load_scene_from_json(file_path: Path):
             scene = show_trajectory(positions, colors=color, scene=scene)
 
         elif object_type == "frame":
-            pose = __parse_pose(values)
-            if pose is None:
+            transform = __parse_transform(values)
+            if transform is None:
                 continue
-            transform = np.eye(4)
-            transform[:3, :3] = Rotation.from_quat(pose[3:]).as_matrix()
-            transform[:3, 3] = pose[:3]
             scene = show_axis(transform, name=name, scene=scene)
 
         elif object_type == "capsule":
@@ -151,6 +159,23 @@ def load_scene_from_json(file_path: Path):
             count = __parse_lines_count(values)
             color = __parse_colors(values, "color")
             scene = show_sphere(center, radius, color=color, scene=scene, count=count)
+
+        elif object_type == "cylinder":
+            radius = values.get("radius", None)
+            if radius is None:
+                logger.warning(f"Invalid cylinder object {name}, no radius found, skipping")
+                continue
+            height = values.get("height", None)
+            if height is None:
+                logger.warning(f"Invalid cylinder object {name}, no height found, skipping")
+                continue
+            transform = __parse_transform(values)
+            if transform is None:
+                logger.warning(f"Invalid cylinder object {name}, no transform found, using identity")
+                transform = np.eye(4)
+            color = __parse_colors(values, "color")
+            count = values.get("count", None)
+            scene = show_cylinder(transform, radius, height, color=color, scene=scene, count=count)
 
         elif object_type == "message":
             title = values.get("title", "info")
