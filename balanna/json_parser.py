@@ -7,7 +7,15 @@ from pathlib import Path
 from scipy.spatial.transform import Rotation
 from typing import Dict, List, Optional, Tuple, Union
 
-from balanna.trimesh import show_trajectory, show_axis, show_capsule, show_cylinder, show_sphere, RGBorRGBAType
+from balanna.trimesh import (
+	show_trajectory, 
+    show_axis, 
+    show_capsule, 
+    show_cylinder, 
+    show_sphere, 
+    show_point_cloud, 
+    RGBorRGBAType
+)
 
 
 def __parse_colors(json_dict: Dict[str, List], key: str = "color", default: Tuple[int, int, int] = (255, 0, 0)
@@ -176,6 +184,15 @@ def load_scene_from_json(file_path: Path):
             color = __parse_colors(values, "color")
             count = values.get("count", None)
             scene = show_cylinder(transform, radius, height, color=color, scene=scene, count=count)
+
+        elif object_type == "point_cloud":
+            positions = np.array(values.get("points", []))
+            if len(positions) == 0:
+                logger.warning(f"Invalid point cloud object {name}, no points found, skipping")
+                continue
+            colors = np.array(values["colors"]) if "colors" in values else None
+            point_size = values.get("point_size", 4.0)
+            scene = show_point_cloud(positions, colors=colors, point_size=point_size, scene=scene)
 
         elif object_type == "message":
             title = values.get("title", "info")
