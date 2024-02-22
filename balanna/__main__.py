@@ -3,6 +3,9 @@ import numpy as np
 import pathlib
 import pickle as pkl
 import tqdm
+import sys
+
+from loguru import logger
 
 from balanna.json_parser import load_scene_from_json
 from balanna.trimesh import show_point_cloud
@@ -15,6 +18,7 @@ def _parse_args():
     parser.add_argument("directory", type=pathlib.Path, help="Data directory or file")
     parser.add_argument("--fps", type=int, help="displaying fps", default=10)
     parser.add_argument("--use-scene-cam", action="store_true", help="use scene camera")
+    parser.add_argument("--debug", action="store_true", help="debug mode")
     return parser.parse_args()
 
 
@@ -61,4 +65,13 @@ def main(args):
 
 if __name__ == '__main__':
     args_ = _parse_args()
+
+    # Setup logger according to debug mode.
+    logger.remove()
+    if args_.debug:
+        logger.add(sys.stderr, level="DEBUG")
+    else:
+        logger.add(sys.stderr, level="INFO")
+
+    # Construct and display scenes.
     display_dataset(main(args_), fps=args_.fps, use_scene_cam=args_.use_scene_cam)
