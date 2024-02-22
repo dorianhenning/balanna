@@ -190,8 +190,11 @@ def load_scene_from_json(file_path: Path):
             if len(positions) == 0:
                 logger.warning(f"Invalid point cloud object {name}, no points found, skipping")
                 continue
-            colors = np.array(values["colors"]) if "colors" in values else None
+            colors = np.array(values["colors"]) * 255 if "colors" in values else None
             point_size = values.get("point_size", 4.0)
+            if point_size < 0.1:
+                logger.debug(f"Point size of point cloud too small, multiplying by 500")
+                point_size *= 500
             scene = show_point_cloud(positions, colors=colors, point_size=point_size, scene=scene)
 
         elif object_type == "message":
