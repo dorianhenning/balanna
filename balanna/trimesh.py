@@ -89,7 +89,7 @@ def show_plane(
 
     # Construct transform from normal vector and point on plane. The plane normal is aligned with the z-axis.
     # Therefore, the rotation matrix R aligns the unit z-axis with the plane normal.
-    R, _ = Rotation.align_vectors(unit_axis, normal)
+    R, _ = Rotation.align_vectors(normal, unit_axis)
     T = np.eye(4)
     T[:3, :3] = R.as_matrix()
     T[:3, 3] = point
