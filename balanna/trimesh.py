@@ -3,10 +3,14 @@ import numpy as np
 import trimesh
 import trimesh.creation
 
+from scipy.spatial.transform import Rotation
 from typing import List, Optional, Tuple, Union
 
 
 __all__ = [
+    "show_box_w_transform",
+    "show_box_w_aabb",
+    "show_plane",
     "show_mesh",
     "show_grid",
     "show_point_cloud",
@@ -23,6 +27,90 @@ __all__ = [
 RGBType = Tuple[int, int, int]
 RGBAType = Tuple[int, int, int, int]
 RGBorRGBAType = Union[RGBAType, RGBType]
+
+
+def show_box_w_transform(
+    extents: Tuple[float, float, float],
+    transform: np.ndarray,
+    name: Optional[str] = None,
+    scene: Optional[trimesh.Scene] = None
+):
+    """Create a 3D box with the given transformation matrix to the plane coordinate frame (normal = z axis).
+
+    Args:
+        extents: box extents (x, y, z).
+        normal: plane normal vector (3).
+        point: point on the plane (3).
+        name: scene node name of mesh.
+        scene: scene to add mesh to, if None a new scene will be created.
+    """
+    if len(extents) != 3:
+        raise ValueError(f"Invalid extents, expected (3,), got {len(extents)}")
+    if transform.shape != (4, 4):
+        raise ValueError(f"Expected transformation matrix of shape (4, 4), got {transform.shape}")
+   
+    if scene is None:
+        scene = trimesh.Scene()
+
+    box = trimesh.creation.box(extents=extents, transform=transform, name=name)
+    scene.add_geometry(box)
+    return scene
+    
+
+def show_plane(
+    normal: np.ndarray,
+    point: np.ndarray,
+    extent_xy: float = 10.0,
+    extent_z: float = 0.1,
+    name: Optional[str] = None,
+    scene: Optional[trimesh.Scene] = None
+):
+    """Create a 3D plane as a flat 3D box with the normal vector and a point on the plane.
+
+    Args:
+        normal: plane normal vector (3).
+        point: point on the plane (3).
+        extent_xy: plane extent in x and y direction.
+        extent_z: plane extent in z direction (thickness of the plane box).
+        name: scene node name of mesh.
+        scene: scene to add mesh to, if None a new scene will be created.
+    """
+    if normal.shape != (3,):
+        raise ValueError(f"Invalid normal shape, expected (3,), got {normal.shape}")
+    if point.shape != (3,):
+        raise ValueError(f"Invalid point shape, expected (3,), got {point.shape}")
+    unit_axis = np.array([0, 0, 1])  # normal of the unit plane in trimesh
+
+    # Construct transform from normal vector and point on plane. The plane normal is aligned with the z-axis.
+    # Therefore, the rotation matrix R aligns the unit z-axis with the plane normal.
+    R, _ = Rotation.align_vectors(unit_axis, normal)
+    T = np.eye(4)
+    T[:3, :3] = R.as_matrix()
+    T[:3, 3] = point
+
+    return show_box_w_transform((extent_xy, extent_xy, extent_z), transform=T, name=name, scene=scene)
+
+def show_box_w_aabb(
+    aabb: np.ndarray,
+    name: Optional[str] = None,
+    scene: Optional[trimesh.Scene] = None
+):
+    """Create a 3D box with the min and max corner.
+
+    Args:
+        aabb: [(x_min, y_min, z_min), (x_max, y_max, z_max)] (2, 3).
+        name: scene node name of mesh.
+        scene: scene to add mesh to, if None a new scene will be created.
+    """
+    if aabb.shape != (2, 3):
+        raise ValueError(f"Invalid aabb shape, expected (2, 3), got {aabb.shape}")
+   
+    if scene is None:
+        scene = trimesh.Scene()
+
+    box = trimesh.creation.box(bounds=aabb, name=name)
+    scene.add_geometry(box)
+    return scene
 
 
 def show_mesh(
