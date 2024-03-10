@@ -65,8 +65,8 @@ def show_box_w_transform(
 def show_plane(
     normal: np.ndarray,
     point: np.ndarray,
-    extent_xy: float = 10.0,
-    extent_z: float = 0.1,
+    extent_xy: float = 5.0,
+    extent_z: float = 0.01,
     color: RGBorRGBAType = (120, 120, 120),
     name: Optional[str] = None,
     scene: Optional[trimesh.Scene] = None

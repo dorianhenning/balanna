@@ -207,16 +207,16 @@ def load_scene_from_json(file_path: Path):
             scene_dict[title] = text
 
         elif object_type == "plane": 
-            normal = values.get("normal", None)
-            if normal is None:
+            if "normal" not in values:
                 logger.warning(f"Invalid plane object {name}, no normal found, skipping")
                 continue
-            center = values.get("center", None)
-            if center is None:
+            if "center" not in values:
                 logger.warning(f"Invalid plane object {name}, no center found, skipping")
                 continue
-            extent_xy = values.get("extent_xy", 10.0)
-            extent_z = values.get("extent_z", 0.1)
+            normal = np.array(values["normal"])
+            center = np.array(values["center"])
+            extent_xy = values.get("extent_xy", 5.0)
+            extent_z = values.get("extent_z", 0.01)
             color = __parse_colors(values, "color")
             scene = show_plane(normal, center, extent_xy, extent_z, color=color, scene=scene)
 
