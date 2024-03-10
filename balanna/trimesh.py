@@ -32,6 +32,7 @@ RGBorRGBAType = Union[RGBAType, RGBType]
 def show_box_w_transform(
     extents: Tuple[float, float, float],
     transform: np.ndarray,
+    color: RGBorRGBAType = (120, 120, 120),
     name: Optional[str] = None,
     scene: Optional[trimesh.Scene] = None
 ):
@@ -41,6 +42,7 @@ def show_box_w_transform(
         extents: box extents (x, y, z).
         normal: plane normal vector (3).
         point: point on the plane (3).
+        color: box color as RGB / RGBA tuple in 0...255 (3/4).
         name: scene node name of mesh.
         scene: scene to add mesh to, if None a new scene will be created.
     """
@@ -51,8 +53,11 @@ def show_box_w_transform(
    
     if scene is None:
         scene = trimesh.Scene()
+    color_uint8 = np.array(color, dtype=np.uint8)
 
     box = trimesh.creation.box(extents=extents, transform=transform, name=name)
+    box.visual.face_colors = np.repeat(color_uint8[None, :], len(box.faces), axis=0)
+
     scene.add_geometry(box)
     return scene
     
@@ -62,6 +67,7 @@ def show_plane(
     point: np.ndarray,
     extent_xy: float = 10.0,
     extent_z: float = 0.1,
+    color: RGBorRGBAType = (120, 120, 120),
     name: Optional[str] = None,
     scene: Optional[trimesh.Scene] = None
 ):
@@ -88,7 +94,8 @@ def show_plane(
     T[:3, :3] = R.as_matrix()
     T[:3, 3] = point
 
-    return show_box_w_transform((extent_xy, extent_xy, extent_z), transform=T, name=name, scene=scene)
+    extents = (extent_xy, extent_xy, extent_z)
+    return show_box_w_transform(extents, transform=T, name=name, color=color, scene=scene)
 
 def show_box_w_aabb(
     aabb: np.ndarray,

@@ -12,6 +12,7 @@ from balanna.trimesh import (
     show_axis, 
     show_capsule, 
     show_cylinder, 
+    show_plane,
     show_sphere, 
     show_point_cloud, 
     RGBorRGBAType
@@ -204,6 +205,20 @@ def load_scene_from_json(file_path: Path):
                 logger.warning(f"Invalid text object {name}, no text found, skipping")
                 continue
             scene_dict[title] = text
+
+        elif object_type == "plane": 
+            normal = values.get("normal", None)
+            if normal is None:
+                logger.warning(f"Invalid plane object {name}, no normal found, skipping")
+                continue
+            center = values.get("center", None)
+            if center is None:
+                logger.warning(f"Invalid plane object {name}, no center found, skipping")
+                continue
+            extent_xy = values.get("extent_xy", 10.0)
+            extent_z = values.get("extent_z", 0.1)
+            color = __parse_colors(values, "color")
+            scene = show_plane(normal, center, extent_xy, extent_z, color=color, scene=scene)
 
         else:
             logger.warning(f"Invalid object {name}, unknown type {object_type}, skipping")
