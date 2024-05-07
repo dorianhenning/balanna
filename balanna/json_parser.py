@@ -1,5 +1,6 @@
 import numpy as np
 import json
+import traceback
 import trimesh
 
 from loguru import logger
@@ -128,100 +129,107 @@ def load_scene_from_json(file_path: Path):
             logger.warning(f"Invalid object {name}, no type found, skipping")
             continue
         object_type = values["type"]
+        logger.debug(f"Processing object {name} with type {object_type}")
 
-        if object_type == "trajectory":
-            positions = __parse_poses(values, "poses")[:, :3]
-            if positions is None:
-                continue
-            color = __parse_colors(values, "color")
-            scene = show_trajectory(positions, colors=color, scene=scene)
+        try:
+            if object_type == "trajectory":
+                positions = __parse_poses(values, "poses")[:, :3]
+                if positions is None:
+                    continue
+                color = __parse_colors(values, "color")
+                scene = show_trajectory(positions, colors=color, scene=scene)
 
-        elif object_type == "frame":
-            transform = __parse_transform(values)
-            if transform is None:
-                continue
-            scene = show_axis(transform, name=name, scene=scene)
+            elif object_type == "frame":
+                transform = __parse_transform(values)
+                if transform is None:
+                    continue
+                scene = show_axis(transform, name=name, scene=scene)
 
-        elif object_type == "capsule":
-            radius = values.get("radius", None)
-            if radius is None:
-                logger.warning(f"Invalid capsule object {name}, no radius found, skipping")
-                continue
-            p1 = __parse_position(values, "p1")
-            p2 = __parse_position(values, "p2")
-            if p1 is None or p2 is None:
-                logger.warning(f"Invalid capsule object {name}, no p1/p2 found, skipping")
-                continue
-            color = __parse_colors(values, "color")
-            count = __parse_lines_count(values)
-            scene = show_capsule(p1, p2, radius, color=color, scene=scene, count=count)
+            elif object_type == "capsule":
+                radius = values.get("radius", None)
+                if radius is None:
+                    logger.warning(f"Invalid capsule object {name}, no radius found, skipping")
+                    continue
+                p1 = __parse_position(values, "p1")
+                p2 = __parse_position(values, "p2")
+                if p1 is None or p2 is None:
+                    logger.warning(f"Invalid capsule object {name}, no p1/p2 found, skipping")
+                    continue
+                color = __parse_colors(values, "color")
+                count = __parse_lines_count(values)
+                scene = show_capsule(p1, p2, radius, color=color, scene=scene, count=count)
 
-        elif object_type == "sphere":
-            radius = values.get("radius", None)
-            if radius is None:
-                logger.warning(f"Invalid sphere object {name}, no radius found, skipping")
-                continue            
-            center = __parse_position(values, "center")
-            if center is None:
-                logger.warning(f"Invalid sphere object {name}, no center found, skipping")
-                continue
-            count = __parse_lines_count(values)
-            color = __parse_colors(values, "color")
-            scene = show_sphere(center, radius, color=color, scene=scene, count=count)
+            elif object_type == "sphere":
+                radius = values.get("radius", None)
+                if radius is None:
+                    logger.warning(f"Invalid sphere object {name}, no radius found, skipping")
+                    continue            
+                center = __parse_position(values, "center")
+                if center is None:
+                    logger.warning(f"Invalid sphere object {name}, no center found, skipping")
+                    continue
+                count = __parse_lines_count(values)
+                color = __parse_colors(values, "color")
+                scene = show_sphere(center, radius, color=color, scene=scene, count=count)
 
-        elif object_type == "cylinder":
-            radius = values.get("radius", None)
-            if radius is None:
-                logger.warning(f"Invalid cylinder object {name}, no radius found, skipping")
-                continue
-            height = values.get("height", None)
-            if height is None:
-                logger.warning(f"Invalid cylinder object {name}, no height found, skipping")
-                continue
-            transform = __parse_transform(values)
-            if transform is None:
-                logger.warning(f"Invalid cylinder object {name}, no transform found, using identity")
-                transform = np.eye(4)
-            color = __parse_colors(values, "color")
-            count = values.get("count", None)
-            scene = show_cylinder(transform, radius, height, color=color, scene=scene, count=count)
+            elif object_type == "cylinder":
+                radius = values.get("radius", None)
+                if radius is None:
+                    logger.warning(f"Invalid cylinder object {name}, no radius found, skipping")
+                    continue
+                height = values.get("height", None)
+                if height is None:
+                    logger.warning(f"Invalid cylinder object {name}, no height found, skipping")
+                    continue
+                transform = __parse_transform(values)
+                if transform is None:
+                    logger.warning(f"Invalid cylinder object {name}, no transform found, using identity")
+                    transform = np.eye(4)
+                color = __parse_colors(values, "color")
+                count = values.get("count", None)
+                scene = show_cylinder(transform, radius, height, color=color, scene=scene, count=count)
 
-        elif object_type == "point_cloud":
-            positions = np.array(values.get("points", []))
-            if len(positions) == 0:
-                logger.warning(f"Invalid point cloud object {name}, no points found, skipping")
-                continue
-            colors = np.array(values["colors"]) * 255 if "colors" in values else None
-            point_size = values.get("point_size", 4.0)
-            if point_size < 0.1:
-                logger.debug(f"Point size of point cloud too small, multiplying by 500")
-                point_size *= 500
-            scene = show_point_cloud(positions, colors=colors, point_size=point_size, scene=scene)
+            elif object_type == "point_cloud":
+                positions = np.array(values.get("points", []))
+                if len(positions) == 0:
+                    logger.warning(f"Invalid point cloud object {name}, no points found, skipping")
+                    continue
+                colors = np.array(values["colors"]) * 255 if "colors" in values else None
+                point_size = values.get("point_size", 4.0)
+                if point_size < 0.1:
+                    logger.debug(f"Point size of point cloud too small, multiplying by 500")
+                    point_size *= 500
+                scene = show_point_cloud(positions, colors=colors, point_size=point_size, scene=scene)
 
-        elif object_type == "message":
-            title = values.get("title", "info")
-            text = values.get("text", None)
-            if text is None:
-                logger.warning(f"Invalid text object {name}, no text found, skipping")
-                continue
-            scene_dict[title] = text
+            elif object_type == "message":
+                title = values.get("title", "info")
+                text = values.get("text", None)
+                if text is None:
+                    logger.warning(f"Invalid text object {name}, no text found, skipping")
+                    continue
+                scene_dict[title] = text
 
-        elif object_type == "plane": 
-            if "normal" not in values:
-                logger.warning(f"Invalid plane object {name}, no normal found, skipping")
-                continue
-            if "center" not in values:
-                logger.warning(f"Invalid plane object {name}, no center found, skipping")
-                continue
-            normal = np.array(values["normal"])
-            center = np.array(values["center"])
-            extent_xy = values.get("extent_xy", 5.0)
-            extent_z = values.get("extent_z", 0.01)
-            color = __parse_colors(values, "color")
-            scene = show_plane(normal, center, extent_xy, extent_z, color=color, scene=scene)
+            elif object_type == "plane": 
+                if "normal" not in values:
+                    logger.warning(f"Invalid plane object {name}, no normal found, skipping")
+                    continue
+                if "center" not in values:
+                    logger.warning(f"Invalid plane object {name}, no center found, skipping")
+                    continue
+                normal = np.array(values["normal"])
+                center = np.array(values["center"])
+                extent_xy = values.get("extent_xy", 5.0)
+                extent_z = values.get("extent_z", 0.01)
+                color = __parse_colors(values, "color")
+                scene = show_plane(normal, center, extent_xy, extent_z, color=color, scene=scene)
 
-        else:
-            logger.warning(f"Invalid object {name}, unknown type {object_type}, skipping")
+            else:
+                logger.warning(f"Invalid object {name}, unknown type {object_type}, skipping")
+                continue
+
+        except Exception as e:
+            logger.error(f"Error processing object {name}, continuing")
+            logger.debug(traceback.format_exc())
             continue
 
     if "scene" in scene_dict:
