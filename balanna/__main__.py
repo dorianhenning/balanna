@@ -7,7 +7,7 @@ import sys
 from loguru import logger
 
 from balanna.json_parser import load_scene_from_json
-from balanna.trimesh import show_axis, show_point_cloud
+from balanna.trimesh import show_axis, show_point_cloud, show_grid
 from balanna.window_dataset import display_dataset
 
 
@@ -16,7 +16,9 @@ def _parse_args():
     parser.add_argument("mode", choices=["pointcloud", "heatmap3d", "scenes", "json"])
     parser.add_argument("directory", type=pathlib.Path, help="Data directory or file")
     parser.add_argument("--fps", type=int, help="displaying fps", default=10)
-    parser.add_argument("--use-scene-cam", action="store_true", help="use scene camera")
+    parser.add_argument("--use-scene-cam", action="store_true", help="Use camera transform from trimesh scene," 
+                                                                     "if available.")
+    parser.add_argument("--add-ground-plane", action="store_true", help="Add ground plane (z = 0) to the scene.")
     parser.add_argument("--debug", action="store_true", help="debug mode")
     return parser.parse_args()
 
@@ -76,6 +78,15 @@ def main(args):
 
     else:
         raise ValueError(f"Invalid displaying mode {args.mode}")
+
+    # Add ground plane if requested. Only add it for the 'scene' tag in the scene_dict. 
+    # If the scene_dict does not have a 'scene' tag, the ground plane will not be added.
+    if args.add_ground_plane:
+        for scene_dict in scenes:
+            if "scene" not in scene_dict:
+                logger.warning("No scene found in scene_dict, not adding ground plane.")
+                continue
+            scene_dict['scene'] = show_grid(scene=scene_dict['scene'])
 
     return scenes
 
