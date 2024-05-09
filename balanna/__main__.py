@@ -11,18 +11,6 @@ from balanna.trimesh import show_axis, show_point_cloud, show_grid
 from balanna.window_dataset import display_dataset
 
 
-def _parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=["pointcloud", "heatmap3d", "scenes", "json"])
-    parser.add_argument("directory", type=pathlib.Path, help="Data directory or file")
-    parser.add_argument("--fps", type=int, help="displaying fps", default=10)
-    parser.add_argument("--use-scene-cam", action="store_true", help="Use camera transform from trimesh scene," 
-                                                                     "if available.")
-    parser.add_argument("--add-ground-plane", action="store_true", help="Add ground plane (z = 0) to the scene.")
-    parser.add_argument("--debug", action="store_true", help="debug mode")
-    return parser.parse_args()
-
-
 def main(args):
     if not args.directory.exists():
         raise FileNotFoundError(f"Input directory {args.directory} not found")
@@ -92,7 +80,16 @@ def main(args):
 
 
 if __name__ == '__main__':
-    args_ = _parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mode", choices=["pointcloud", "heatmap3d", "scenes", "json"])
+    parser.add_argument("directory", type=pathlib.Path, help="Data directory or file")
+    parser.add_argument("--fps", type=int, help="displaying fps", default=10)
+    parser.add_argument("--use-scene-cam", action="store_true", help="Use camera transform from trimesh scene," 
+                                                                     "if available.")
+    parser.add_argument("--add-ground-plane", action="store_true", help="Add ground plane (z = 0) to the scene.")
+    parser.add_argument("--show-frame-index", action="store_true", help="Show frame index.")
+    parser.add_argument("--debug", action="store_true", help="debug mode")
+    args_ = parser.parse_args()
 
     # Setup logger according to debug mode.
     logger.remove()
@@ -102,4 +99,10 @@ if __name__ == '__main__':
         logger.add(sys.stderr, level="INFO")
 
     # Construct and display scenes.
-    display_dataset(main(args_), fps=args_.fps, use_scene_cam=args_.use_scene_cam)
+    display_dataset(
+        main(args_), 
+        fps=args_.fps,
+        use_scene_cam=args_.use_scene_cam, 
+        debug=args_.debug, 
+        show_frame_index=args_.show_frame_index
+    )

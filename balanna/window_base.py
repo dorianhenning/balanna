@@ -59,6 +59,7 @@ class MainWindow(Qt.QMainWindow):
 
         # Set up 3D scene widgets (i.e. trimesh scenes).
         self.scene_key_dict = {key: i for i, key in enumerate(scene_keys)}
+        self.scene_overlay_dict = {key: vedo.Text2D(key, s=0.5, c='black') for key in scene_keys}
         self.vps = []
         self.vtkWidgets = []
         vl2 = Qt.QHBoxLayout()
@@ -117,7 +118,7 @@ class MainWindow(Qt.QMainWindow):
                 print("\033[93m" + "Video directory already exists, overwriting it ..." + "\033[0m")
             self.video_directory.mkdir(exist_ok=True, parents=True)
 
-    def render_(self, scene_dict: SceneDictType, resetcam: bool = False):
+    def render_(self, scene_dict: SceneDictType, resetcam: bool = False, title: Optional[str] = None):
         start_time = time.perf_counter()
 
         for key, element in scene_dict.items():
@@ -127,7 +128,7 @@ class MainWindow(Qt.QMainWindow):
                     label=key if self.show_labels else None,
                     use_scene_cam=self.use_scene_cam
                 )
-                self.render_scene_at_key_(key, meshes_vedo, resetcam=resetcam, camera_dict=camera_dict)
+                self.render_scene_at_key_(key, meshes_vedo, resetcam=resetcam, camera_dict=camera_dict, title=title)
 
             elif isinstance(element, np.ndarray) and key in self.image_widge_dict:
                 if len(element.shape) == 3:
@@ -153,7 +154,7 @@ class MainWindow(Qt.QMainWindow):
                 self.figureCanvas[at].draw()
 
             elif isinstance(element, vedo.Volume):
-                self.render_scene_at_key_(key, [element], resetcam=resetcam)
+                self.render_scene_at_key_(key, [element], resetcam=resetcam, title=title)
 
             else:
                 print("\033[93m" + f"Invalid element in scene dict of type {type(element)}, skipping ..." + "\033[0m")
@@ -172,7 +173,8 @@ class MainWindow(Qt.QMainWindow):
         key: str,
         meshes: List[Union[vedo.Mesh, vedo.Volume]],
         resetcam: bool = False,
-        camera_dict: Optional[Dict[str, np.ndarray]] = None
+        camera_dict: Optional[Dict[str, np.ndarray]] = None,
+        title: Optional[str] = None
     ):
         if key not in self.scene_key_dict:
             print("\033[93m" + f"Key {key} not in scene key dicts, skipping ..." + "\033[0m")
@@ -180,6 +182,10 @@ class MainWindow(Qt.QMainWindow):
 
         at = self.scene_key_dict[key]
         self.vps[at].clear()
+        if title is not None:
+            overlay = self.scene_overlay_dict[key]
+            overlay.text(title)  # change text to new title
+            meshes += [overlay]
         self.vps[at].show(meshes, bg="white", resetcam=resetcam, camera=camera_dict)
 
     def __align_event(self, event=None, align_id: int = None):  # noqa

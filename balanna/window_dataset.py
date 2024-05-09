@@ -24,6 +24,7 @@ class MainWindowDataset(MainWindow):
         horizontal: bool = True,
         loop: bool = True,
         show_labels: bool = False,
+        show_frame_index: bool = False,
         use_scene_cam: bool = False,
         store_directory: Optional[Union[pathlib.Path, str]] = None,
         debug: bool = False,
@@ -34,6 +35,7 @@ class MainWindowDataset(MainWindow):
         if len(scenes) == 0:
             return
         self.__frame_idx = 0
+        self.__show_frame_index = show_frame_index
         scene_dict = self.scenes[0]
 
         image_keys = [key for key, value in scene_dict.items() if isinstance(value, np.ndarray)]
@@ -50,7 +52,8 @@ class MainWindowDataset(MainWindow):
             debug=debug,
             parent=parent
         )
-        self.render_(scene_dict, resetcam=True)
+        title = self.__make_title()
+        self.render_(scene_dict, resetcam=True, title=title)
 
         # If store_directory is given, save the scene list to the directory.
         if store_directory is not None:
@@ -92,7 +95,8 @@ class MainWindowDataset(MainWindow):
             else:
                 scene_dict_safe = scene_dict
 
-            self.render_(scene_dict_safe, resetcam=resetcam)
+            title = self.__make_title()
+            self.render_(scene_dict_safe, resetcam=resetcam, title=title)
         else:
             # Reset frame index to a valid index.
             self.__frame_idx = max(min(self.__frame_idx, len(self.scenes) - 1), 0)
@@ -111,6 +115,11 @@ class MainWindowDataset(MainWindow):
         elif key_pressed == "b" and not self.timer.isActive():
             self.__frame_idx -= 1
             self.render_current_index()
+
+    def __make_title(self) -> Optional[str]:
+        if not self.__show_frame_index:
+            return None
+        return f"Frame {self.__frame_idx + 1}/{len(self.scenes)}"
 
     @staticmethod
     def print_usage():
@@ -134,6 +143,7 @@ def display_dataset_custom(
     fps: float = 30.0,
     video_directory: Optional[Union[pathlib.Path, str]] = None,
     show_labels: bool = False,
+    show_frame_index: bool = False,
     use_scene_cam: bool = False,
     store_directory: Optional[Union[pathlib.Path, str]] = None,
     debug: bool = False
@@ -151,6 +161,7 @@ def display_dataset_custom(
         fps: frames (i.e. scenes) per second for looping.
         video_directory: directory for storing screenshots.
         show_labels: display the scene dict keys.
+        show_frame_index: display the current frame index.
         use_scene_cam: use camera transform from trimesh scenes.
         store_directory: path to directory storing scene pickle files.
         debug: printing debug information.
@@ -163,6 +174,7 @@ def display_dataset_custom(
         horizontal=horizontal,
         loop=loop,
         show_labels=show_labels,
+        show_frame_index=show_frame_index,
         debug=debug,
         use_scene_cam=use_scene_cam,
         store_directory=store_directory
@@ -178,6 +190,7 @@ def display_dataset(
     fps: float = 30.0,
     video_directory: Optional[Union[pathlib.Path, str]] = None,
     show_labels: bool = False,
+    show_frame_index: bool = False,
     use_scene_cam: bool = False,
     store_directory: Optional[Union[pathlib.Path, str]] = None,
     debug: bool = False
@@ -194,6 +207,7 @@ def display_dataset(
         fps: frames (i.e. scenes) per second for looping.
         video_directory: directory for storing screenshots.
         show_labels: display the scene dict keys.
+        show_frame_index: display the current frame index.
         use_scene_cam: use camera transform from trimesh scenes.
         store_directory: path to directory storing scene pickle files.
         debug: printing debug information.
@@ -206,6 +220,7 @@ def display_dataset(
         fps=fps,
         video_directory=video_directory,
         show_labels=show_labels,
+        show_frame_index=show_frame_index,
         use_scene_cam=use_scene_cam,
         store_directory=store_directory,
         debug=debug

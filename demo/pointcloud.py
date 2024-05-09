@@ -23,4 +23,4 @@ def main():
 
 
 if __name__ == '__main__':
-    display_dataset(main())
+    display_dataset(main(), show_frame_index=True)
