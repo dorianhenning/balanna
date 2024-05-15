@@ -29,10 +29,16 @@ def main(args):
         if len(files) == 0:
             raise FileNotFoundError(f"No files found, invalid or empty cache directory {args.directory}")
 
+    # Define the iterator.
+    file_iterator = iter(files)
+    if args.show_progress:
+        import tqdm
+        file_iterator = tqdm.tqdm(files, total=len(files))
+
     # Load and process files into scenes.
     scenes = []
     if args.mode == "pointcloud":
-        for file in files:
+        for file in file_iterator:
             point_cloud = np.loadtxt(file).reshape(-1, 6)
             scene = show_point_cloud(point_cloud[:, :3], colors=point_cloud[:, 3:])
             scenes.append({'scene': scene})
@@ -40,7 +46,7 @@ def main(args):
     elif args.mode == "heatmap3d":
         from matplotlib import colormaps
         import matplotlib.colors as mcolors
-        for file in files:
+        for file in file_iterator:
             logger.debug(f"Loading file {file}")
             heatmap3d = np.loadtxt(file).reshape(-1, 4)
 
@@ -54,13 +60,13 @@ def main(args):
             scenes.append({'scene': scene})
 
     elif args.mode == "scenes":
-        for k, file in enumerate(files):
+        for k, file in enumerate(file_iterator):
             with open(file, 'rb') as f:
                 scene_dict = pkl.load(f)
             scenes.append(scene_dict)
 
     elif args.mode == "json":
-        for k, file in enumerate(files):
+        for k, file in enumerate(file_iterator):
             scene_dict = load_scene_from_json(file)
             scenes.append(scene_dict)
 
@@ -88,6 +94,7 @@ if __name__ == '__main__':
                                                                      "if available.")
     parser.add_argument("--add-ground-plane", action="store_true", help="Add ground plane (z = 0) to the scene.")
     parser.add_argument("--show-frame-index", action="store_true", help="Show frame index.")
+    parser.add_argument("--show-progress", action="store_true", help="Show progress bar.")
     parser.add_argument("--debug", action="store_true", help="debug mode")
     args_ = parser.parse_args()
 
