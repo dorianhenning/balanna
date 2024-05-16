@@ -12,7 +12,8 @@ from balanna.trimesh import (
 	show_trajectory, 
     show_axis, 
     show_capsule, 
-    show_cylinder, 
+    show_cylinder,
+    show_ellipsoid, 
     show_plane,
     show_sphere, 
     show_point_cloud, 
@@ -103,6 +104,17 @@ def __parse_poses(json_dict: Dict[str, List], key: str = "poses") -> Optional[np
     return poses
 
 
+def __parse_radii(json_dict: Dict[str, List], key: str = "radii") -> Optional[np.ndarray]:
+    if key not in json_dict:
+        logger.debug(f"Radii not found in {json_dict} using key {key}")
+        return None
+    radii = np.array(json_dict[key])
+    if len(radii) != 3:
+        logger.debug(f"Invalid radii array {radii} in {json_dict} using key {key}")
+        return None
+    return radii
+
+
 def __parse_lines_count(json_dict: Dict[str, List]) -> Optional[Tuple[int, int]]:
     latitude = json_dict.get("countLatitude", None)
     longitude = json_dict.get("countLongitude", None)
@@ -171,6 +183,19 @@ def load_scene_from_json(file_path: Path):
                 count = __parse_lines_count(values)
                 color = __parse_colors(values, "color")
                 scene = show_sphere(center, radius, color=color, scene=scene, count=count)
+
+            elif object_type == "ellipsoid":
+                radii = __parse_radii(values, "radii")
+                if radii is None:
+                    logger.warning(f"Invalid ellipsoid object {name}, no radii found, skipping")
+                    continue
+                center = __parse_position(values, "center")
+                if center is None:
+                    logger.warning(f"Invalid ellipsoid object {name}, no center found, skipping")
+                    continue
+                color = __parse_colors(values, "color")
+                count = __parse_lines_count(values)
+                scene = show_ellipsoid(center, radii, color=color, scene=scene, count=count)
 
             elif object_type == "cylinder":
                 radius = values.get("radius", None)

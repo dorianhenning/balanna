@@ -10,6 +10,7 @@ from typing import List, Optional, Tuple, Union
 __all__ = [
     "show_box_w_transform",
     "show_box_w_aabb",
+    "show_ellipsoid",
     "show_plane",
     "show_mesh",
     "show_grid",
@@ -428,6 +429,62 @@ def show_sphere(
     sphere.apply_translation(center)
 
     scene.add_geometry(sphere)
+    return scene
+
+
+def show_ellipsoid(
+    center: np.ndarray,
+    radii: np.ndarray,
+    color: RGBorRGBAType,
+    scene: trimesh.Scene, 
+    count: Optional[Tuple[int, int]] = None
+) -> trimesh.Scene:
+    """Add an ellipsoid to the scene.
+    
+    Args:
+        center: ellipsoid center coordinates (3).
+        radii: ellipsoid radii (3).
+        color: RGB ellipsoid color in 0...255 (3).
+        scene: scene to add ellipsoid to.
+        count: ellipsoid resolution as number of latitude and longitude lines (2).
+    """
+    if scene is None:
+        scene = trimesh.Scene()
+    if np.any(radii < 0.01):
+        raise ValueError(f"Invalid ellipsoid radii {radii}, must be > 0.01")
+    if radii.shape != (3,):
+        raise ValueError(f"Invalid ellipsoid radii shape, expected (3,), got {radii.shape}")
+    if count is not None and (count[0] < 3 or count[1] < 3):
+        raise ValueError(f"Invalid ellipsoid count {count}, must be >= 3")
+    
+    if count is None:
+        count = (20, 20)
+    nu, nv = count
+
+    # Compute vertices for the ellipsoid using the ellipsoid parametric equation.
+    vertices = np.empty(((nu + 1) * (nv + 1), 3))
+    for i in range(nu + 1):
+        theta = i * np.pi / nv  # angle for the latitude (0 to pi)
+        for j in range(nv + 1):
+            phi = j * 2 * np.pi / nv  # angle for the longitude (0 to 2*pi)
+            x = radii[0] * np.sin(theta) * np.cos(phi)
+            y = radii[1] * np.sin(theta) * np.sin(phi)
+            z = radii[2] * np.cos(theta)
+            vertices[i * (nv + 1) + j] = [x, y, z] + center
+
+    # Compute faces for the ellipsoid.
+    faces = np.empty((2 * nu * nv, 3), dtype=int)
+    for i in range(nu):
+        for j in range(nv):
+            v1 = i * (nv + 1) + j
+            v2 = (i + 1) * (nv + 1) + j
+            v3 = (i + 1) * (nv + 1) + (j + 1)
+            v4 = i * (nv + 1) + (j + 1)
+            faces[2 * (i * nv + j)] = [v1, v2, v3]
+            faces[2 * (i * nv + j) + 1] = [v1, v3, v4]
+
+    mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+    scene.add_geometry(mesh)
     return scene
 
 
