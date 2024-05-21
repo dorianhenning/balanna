@@ -29,6 +29,16 @@ def main(args):
         if len(files) == 0:
             raise FileNotFoundError(f"No files found, invalid or empty cache directory {args.directory}")
 
+    # Limit the number of frames to display.
+    if args.n is not None:
+        files = files[:args.n]
+    # Downsample the frames.
+    if args.downsample < 0 or args.downsample > len(files):
+        logger.error(f"Invalid downsample factor {args.downsample}, using 1")
+        args.downsample = 1
+    if args.downsample > 1:
+        files = files[::args.downsample]
+
     # Define the iterator.
     file_iterator = iter(files)
     if args.show_progress:
@@ -95,6 +105,8 @@ if __name__ == '__main__':
     parser.add_argument("--add-ground-plane", action="store_true", help="Add ground plane (z = 0) to the scene.")
     parser.add_argument("--show-frame-index", action="store_true", help="Show frame index.")
     parser.add_argument("--show-progress", action="store_true", help="Show progress bar.")
+    parser.add_argument("--n", type=int, help="Number of frames to display", default=None)
+    parser.add_argument("--downsample", type=int, help="Downsample factor", default=1)
     parser.add_argument("--debug", action="store_true", help="debug mode")
     args_ = parser.parse_args()
 
