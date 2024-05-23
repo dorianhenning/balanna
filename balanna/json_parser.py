@@ -1,3 +1,5 @@
+import base64
+import struct
 import numpy as np
 import json
 import traceback
@@ -119,7 +121,7 @@ def __parse_lines_count(json_dict: Dict[str, List]) -> Optional[Tuple[int, int]]
     latitude = json_dict.get("countLatitude", None)
     longitude = json_dict.get("countLongitude", None)
     if latitude is None or longitude is None:
-        logger.debug(f"Count not found, returning None")
+        logger.debug("Count not found, returning None")
         return None
     if not isinstance(latitude, int) or not isinstance(longitude, int):
         logger.debug(f"Invalid count {latitude, longitude}, must be integers, returning None")
@@ -215,16 +217,35 @@ def load_scene_from_json(file_path: Path):
                 scene = show_cylinder(transform, radius, height, color=color, scene=scene, count=count)
 
             elif object_type == "point_cloud":
-                positions = np.array(values.get("points", []))
-                if len(positions) == 0:
+                points = values.get("points", None)
+                if points is None:
                     logger.warning(f"Invalid point cloud object {name}, no points found, skipping")
                     continue
+
+                # Decode base64 encoded points if base64 encoded.
+                if isinstance(points, str):
+                    points_decoded = base64.b64decode(points)
+                    num_points = len(points_decoded) // 4
+                    points = list(struct.unpack('f' * num_points, points_decoded))
+                # If points are not base64 encoded, check if they are a list of lists.
+                elif isinstance(points, list) or isinstance(points, np.ndarray):
+                    pass
+                else:
+                    logger.warning(f"Invalid point cloud object {name}, " \
+                                    "points must be a list or base64 encoded, skipping")
+                    continue
+
+                points = np.array(points)
+                if len(points) == 0:
+                    logger.warning(f"Invalid point cloud object {name}, no points found, skipping")
+                    continue
+
                 colors = np.array(values["colors"]) * 255 if "colors" in values else None
                 point_size = values.get("point_size", 4.0)
                 if point_size < 0.1:
-                    logger.debug(f"Point size of point cloud too small, multiplying by 500")
+                    logger.debug(f"Point size {point_size} of point cloud too small, multiplying by 500")
                     point_size *= 500
-                scene = show_point_cloud(positions, colors=colors, point_size=point_size, scene=scene)
+                scene = show_point_cloud(points, colors=colors, point_size=point_size, scene=scene)
 
             elif object_type == "message":
                 title = values.get("title", "info")
