@@ -403,7 +403,7 @@ def show_sphere(
     center: np.ndarray, 
     radius: float, 
     color: RGBorRGBAType, 
-    scene: trimesh.Scene,
+    scene: Optional[trimesh.Scene] = None,
     count: Optional[Tuple[int, int]] = None
 ) -> trimesh.Scene:
     """Add a sphere to the scene.
@@ -436,7 +436,7 @@ def show_ellipsoid(
     center: np.ndarray,
     radii: np.ndarray,
     color: RGBorRGBAType,
-    scene: trimesh.Scene, 
+    scene: Optional[trimesh.Scene] = None, 
     count: Optional[Tuple[int, int]] = None
 ) -> trimesh.Scene:
     """Add an ellipsoid to the scene.
@@ -493,7 +493,7 @@ def show_capsule(
     p2: np.ndarray, 
     radius: float, 
     color: RGBorRGBAType, 
-    scene: trimesh.Scene,
+    scene: Optional[trimesh.Scene] = None,
     count: Optional[Tuple[int, int]] = None
 ) -> trimesh.Scene:
     """Add a capsule to the scene.
@@ -557,7 +557,7 @@ def show_cylinder(
     radius: float,
     height: float,
     color: RGBorRGBAType,
-    scene: trimesh.Scene,
+    scene: Optional[trimesh.Scene] = None,
     count: Optional[int] = None
 ) -> trimesh.Scene:
     """Add a cylinder to the scene.
