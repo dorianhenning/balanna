@@ -8,7 +8,7 @@ import trimesh
 from loguru import logger
 from pathlib import Path
 from scipy.spatial.transform import Rotation
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 from balanna.components import (
 	show_trajectory, 

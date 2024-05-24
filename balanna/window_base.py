@@ -4,12 +4,10 @@ import importlib.metadata
 import numpy as np
 import packaging.version
 import pathlib
-import trimesh.path.entities
-import trimesh.viewer
+import trimesh
 import time
 import vedo
 
-import matplotlib
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -17,7 +15,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from functools import partial
 from PIL import Image
 from PyQt5 import Qt
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from balanna.utils.vedo_utils import trimesh_scene_2_vedo

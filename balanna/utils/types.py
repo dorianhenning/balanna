@@ -1,6 +1,6 @@
-import trimesh
-import vedo
+from trimesh import Scene
+from vedo import Volume
 
 
 def contains_scene(x):
-    return isinstance(x, trimesh.Scene) or isinstance(x, vedo.Volume)
+    return isinstance(x, Scene) or isinstance(x, Volume)
