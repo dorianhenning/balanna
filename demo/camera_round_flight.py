@@ -4,7 +4,7 @@ import trimesh.creation
 import trimesh.path
 
 from balanna.camera_trajectories import create_round_flight
-from balanna.trimesh import show_grid
+from balanna.components import show_grid
 from balanna import display_generated
 
 

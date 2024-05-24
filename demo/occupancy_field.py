@@ -2,7 +2,7 @@ import numpy as np
 import vedo
 
 from balanna import display_generated
-from balanna.trimesh import show_axes, show_grid
+from balanna.components import show_axes, show_grid
 
 
 def main():

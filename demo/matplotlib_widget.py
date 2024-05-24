@@ -3,7 +3,7 @@ import trimesh
 import trimesh.creation
 import matplotlib.pyplot as plt
 
-from balanna.trimesh import show_grid
+from balanna.components import show_grid
 from balanna import display_dataset
 
 

@@ -3,7 +3,7 @@ import trimesh.creation
 
 from typing import Optional
 
-from balanna.trimesh import show_grid
+from balanna.components import show_grid
 from balanna import display_generated_custom, MainWindowGenerator, SceneDictType
 
 

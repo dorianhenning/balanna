@@ -2,7 +2,7 @@ import numpy as np
 import trimesh
 import trimesh.creation
 
-from balanna.trimesh import show_trajectory
+from balanna.components import show_trajectory
 from balanna import display_generated
 
 

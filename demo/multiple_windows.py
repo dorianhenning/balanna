@@ -2,7 +2,7 @@ import numpy as np
 import trimesh
 import trimesh.creation
 
-from balanna.trimesh import show_grid
+from balanna.components import show_grid
 from balanna import display_generated
 
 

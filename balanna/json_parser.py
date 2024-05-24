@@ -10,7 +10,7 @@ from pathlib import Path
 from scipy.spatial.transform import Rotation
 from typing import Dict, List, Optional, Tuple, Union
 
-from balanna.trimesh import (
+from balanna.components import (
 	show_trajectory, 
     show_axis, 
     show_capsule, 

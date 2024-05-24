@@ -9,7 +9,7 @@ pip install balanna
 ```
 import numpy as np
 
-from balanna.trimesh import show_point_cloud
+from balanna.components import show_point_cloud
 from balanna.display_scenes import display_scenes
 
 

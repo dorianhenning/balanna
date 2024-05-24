@@ -7,7 +7,7 @@ import sys
 from loguru import logger
 
 from balanna.json_parser import load_scene_from_json
-from balanna.trimesh import show_axis, show_point_cloud, show_grid
+from balanna.components import show_point_cloud, show_grid
 from balanna.window_dataset import display_dataset
 
 

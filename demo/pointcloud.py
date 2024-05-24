@@ -1,7 +1,7 @@
 import numpy as np
 
 from balanna.camera_trajectories import create_round_flight
-from balanna.trimesh import show_point_cloud, show_grid, show_camera
+from balanna.components import show_point_cloud, show_grid, show_camera
 from balanna import display_dataset
 
 
