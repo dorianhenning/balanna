@@ -11,11 +11,12 @@ from scipy.spatial.transform import Rotation
 from typing import Dict, List, Optional, Tuple
 
 from balanna.components import (
-	show_trajectory, 
+    show_trajectory, 
     show_axis, 
     show_capsule, 
     show_cylinder,
     show_ellipsoid, 
+    show_mesh,
     show_plane,
     show_sphere, 
     show_point_cloud, 
@@ -247,6 +248,29 @@ def load_scene_from_json(file_path: Path):
                     point_size *= 500
                 scene = show_point_cloud(points, colors=colors, point_size=point_size, scene=scene)
 
+            elif object_type == "mesh":
+                vertices = values.get("vertices", None)
+                if vertices is None:
+                    logger.warning(f"Invalid mesh object {name}, no vertices found, skipping")
+                    continue
+                vertices = np.array(vertices)
+
+                faces = values.get("faces", None)
+                if faces is None:
+                    logger.warning(f"Invalid mesh object {name}, no faces found, skipping")
+                    continue
+                faces = np.array(faces)
+
+                colors = values.get("vertex_colors", None)
+                if colors is not None:
+                    colors = np.array(colors) * 255
+                elif "color" in values:
+                    colors = np.array(values["color"]) * 255
+                    colors = np.tile(colors, (vertices.shape[0], 1))
+                else:
+                    colors = None
+                scene = show_mesh(vertices, faces, vertex_color=colors, scene=scene)
+                
             elif object_type == "message":
                 title = values.get("title", "info")
                 text = values.get("text", None)
