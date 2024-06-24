@@ -248,12 +248,8 @@ def load_scene_from_json(file_path: Path):
                 scene = show_point_cloud(points, colors=colors, point_size=point_size, scene=scene)
 
             elif object_type == "message":
-                title = values.get("title", "info")
-                text = values.get("text", None)
-                if text is None:
-                    logger.warning(f"Invalid text object {name}, no text found, skipping")
-                    continue
-                scene_dict[title] = text
+                text = str({k: v for k, v in values.items() if k != "type"})
+                scene_dict[name] = text
 
             elif object_type == "plane": 
                 if "normal" not in values:
