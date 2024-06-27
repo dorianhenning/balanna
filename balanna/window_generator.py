@@ -1,6 +1,7 @@
 import numpy as np
 import pathlib
 
+from loguru import logger
 from matplotlib.axes import Axes
 from PyQt5 import Qt
 from typing import Iterable, Optional, Union, Type
@@ -171,6 +172,6 @@ def display_generated(
 
 
 def display_scenes(*args, **kwargs):
-    print("\033[93m" + f"display_scenes() is out-dated and will be removed in the next version, "
-                       f"use display_generated() instead" + "\033[0m")
+    logger.warning("display_scenes() is out-dated and will be removed in the next version, "
+                   "use display_generated() instead")
     return display_generated(*args, **kwargs)

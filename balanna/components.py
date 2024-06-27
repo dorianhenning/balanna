@@ -3,6 +3,7 @@ import numpy as np
 import trimesh
 import trimesh.creation
 
+from loguru import logger
 from scipy.spatial.transform import Rotation
 from typing import List, Optional, Tuple, Union
 
@@ -288,7 +289,7 @@ def show_trajectory(
 
     # If the trajectory just contains a single point, then it cannot be drawn. Just return the scene.
     if trajectory.shape[0] < 2:
-        print("\033[93m" + "Trajectory must contain at least two points, skipping ..." + "\033[0m")
+        logger.warning("Trajectory must contain at least two points, skipping ...")
         return scene
 
     # In trimesh a path consists of line segments, each connecting one vertex with the next one. The

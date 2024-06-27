@@ -4,6 +4,7 @@ import trimesh.visual
 import vedo
 import vtk
 
+from loguru import logger
 from typing import Dict, List, Optional, Tuple
 from vtk.util.numpy_support import numpy_to_vtk
 
@@ -72,7 +73,7 @@ def trimesh_scene_2_vedo(scene: trimesh.Scene, label: Optional[str] = None, use_
                 pd.GetPointData().AddArray(ucols)
                 pd.GetPointData().SetActiveScalars("Points_RGBA")
             else:
-                print("\033[93m" + f"Invalid point cloud colors, skipping ..." + "\033[0m")
+                logger.warning("Invalid point cloud colors, skipping ...")
 
             # Extract the point size from the trimesh.PointCloud metadata, if available.
             point_size = 4

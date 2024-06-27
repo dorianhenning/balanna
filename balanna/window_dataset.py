@@ -3,6 +3,7 @@ import numpy as np
 import pathlib
 import pickle as pkl
 
+from loguru import logger
 from matplotlib.axes import Axes
 from PyQt5 import Qt
 from typing import List, Optional, Union, Type
@@ -57,16 +58,16 @@ class MainWindowDataset(MainWindow):
 
         # If store_directory is given, save the scene list to the directory.
         if store_directory is not None:
-            print("\033[36m" + f"Storing scene in directory {store_directory}" + "\033[0m")
+            logger.info(f"Storing scene in directory {store_directory}")
             store_directory = pathlib.Path(store_directory)
             if store_directory.exists():
-                print("\033[33m" + f"Directory {store_directory} already exists, overwriting..." + "\033[0m")
+                logger.info(f"Directory {store_directory} already exists, overwriting...")
             store_directory.mkdir(parents=True, exist_ok=True)
             for k, scene in enumerate(scenes):
                 pkl_file = store_directory / f"{k:05d}.pkl"
                 with open(pkl_file, 'wb') as f:
                     pkl.dump(scene, f, protocol=pkl.HIGHEST_PROTOCOL)
-            print("\033[36m" + f"... done" + "\033[0m")
+            logger.info("Storing scenes done")
 
         # Setup looping timer and connect it to render a new scene at every timer callback.
         # If loop is true, start looping right away.

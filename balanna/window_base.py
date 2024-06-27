@@ -13,6 +13,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
 from functools import partial
+from loguru import logger
 from PIL import Image
 from PyQt5 import Qt
 from typing import Dict, List, Optional, Union
@@ -113,13 +114,14 @@ class MainWindow(Qt.QMainWindow):
         if video_directory is not None:
             self.video_directory = pathlib.Path(video_directory)
             if self.video_directory.exists():
-                print("\033[93m" + "Video directory already exists, overwriting it ..." + "\033[0m")
+                logger.warning("Video directory already exists, overwriting it ...")
             self.video_directory.mkdir(exist_ok=True, parents=True)
 
     def render_(self, scene_dict: SceneDictType, resetcam: bool = False, title: Optional[str] = None):
         start_time = time.perf_counter()
 
         for key, element in scene_dict.items():
+            logger.debug(f"Rendering key {key} with type {type(element)}")
             if isinstance(element, trimesh.Scene):
                 meshes_vedo, camera_dict = trimesh_scene_2_vedo(
                     scene=element,
@@ -155,12 +157,12 @@ class MainWindow(Qt.QMainWindow):
                 self.render_scene_at_key_(key, [element], resetcam=resetcam, title=title)
 
             else:
-                print("\033[93m" + f"Invalid element in scene dict of type {type(element)}, skipping ..." + "\033[0m")
+                logger.warning(f"Invalid element in scene dict of type {type(element)}, skipping ...")
                 continue
 
         if self.debug:
             dt = int((time.perf_counter() - start_time) * 1000)  # secs -> milliseconds
-            print("\033[36m" + f"Rendering time: {dt} ms" + "\033[0m")
+            logger.debug(f"Rendering time: {dt} ms")
 
         if self.video_directory is not None:
             self.screenshot(self.video_directory, prefix=f"{self.__video_index:05d}")
@@ -175,7 +177,7 @@ class MainWindow(Qt.QMainWindow):
         title: Optional[str] = None
     ):
         if key not in self.scene_key_dict:
-            print("\033[93m" + f"Key {key} not in scene key dicts, skipping ..." + "\033[0m")
+            logger.warning(f"Key {key} not in scene key dicts, skipping ...")
             return
 
         at = self.scene_key_dict[key]
