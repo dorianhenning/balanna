@@ -42,6 +42,10 @@ class MainWindowDataset(MainWindow):
         image_keys = [key for key, value in scene_dict.items() if isinstance(value, np.ndarray)]
         scene_keys = [key for key, value in scene_dict.items() if contains_scene(value)]
         figure_keys = [key for key, value in scene_dict.items() if isinstance(value, Axes)]
+        logger.debug(f"Image keys: {image_keys}")
+        logger.debug(f"Scene keys: {scene_keys}")
+        logger.debug(f"Figure keys: {figure_keys}")
+
         super(MainWindowDataset, self).__init__(
             image_keys=image_keys,
             scene_keys=scene_keys,

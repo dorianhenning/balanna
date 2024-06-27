@@ -121,7 +121,7 @@ class MainWindow(Qt.QMainWindow):
         start_time = time.perf_counter()
 
         for key, element in scene_dict.items():
-            logger.debug(f"Rendering key {key} with type {type(element)}")
+            logger.debug(f"Rendering key '{key}' with type {type(element)}")
             if isinstance(element, trimesh.Scene):
                 meshes_vedo, camera_dict = trimesh_scene_2_vedo(
                     scene=element,

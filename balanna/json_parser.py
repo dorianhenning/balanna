@@ -5,6 +5,7 @@ import json
 import traceback
 import trimesh
 
+from functools import lru_cache
 from loguru import logger
 from pathlib import Path
 from scipy.spatial.transform import Rotation
@@ -133,10 +134,43 @@ def __parse_lines_count(json_dict: Dict[str, List]) -> Optional[Tuple[int, int]]
     return latitude, longitude
 
 
-def load_scene_from_json(file_path: Path):
+def __parse_vertex_colors(json_dict: Dict[str, List], num_vertices: int) -> Optional[np.ndarray]:
+    colors = json_dict.get("vertex_colors", None)
+    if colors is not None:
+        colors = np.array(colors) * 255
+    elif "color" in json_dict:
+        colors = np.array(json_dict["color"]) * 255
+        colors = np.tile(colors, (num_vertices, 1))
+    else:
+        colors = None
+    return colors
+
+
+@lru_cache(maxsize=1)
+def __process_kwargs(**kwargs):
+    output = dict()
+    if "smpl_model" in kwargs.keys():
+        smpl_model_path = kwargs["smpl_model"]
+        logger.info(f"Loading SMPL model from {smpl_model_path}")
+        import torch
+        import smplx
+        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = torch.device("cpu")
+        output["smpl_model"] = smplx.SMPL(smpl_model_path, batch_size=1).to(device)
+        output["device"] = device
+
+    return output
+
+
+def load_scene_from_json(file_path: Path, **kwargs):
     with open(file_path) as f:
         data = json.load(f)
 
+    # Prepare the kwargs, if any.
+    tools = __process_kwargs(**kwargs)
+
+    # Process the data. Iterate through the json objects and call the respective visualization
+    # functions, depending on the object type.
     scene_dict = dict()
     scene = trimesh.Scene()
     for name, values in data.items():
@@ -261,16 +295,51 @@ def load_scene_from_json(file_path: Path):
                     continue
                 faces = np.array(faces)
 
-                colors = values.get("vertex_colors", None)
-                if colors is not None:
-                    colors = np.array(colors) * 255
-                elif "color" in values:
-                    colors = np.array(values["color"]) * 255
-                    colors = np.tile(colors, (vertices.shape[0], 1))
-                else:
-                    colors = None
+                colors = __parse_vertex_colors(values, vertices.shape[0])
                 scene = show_mesh(vertices, faces, vertex_color=colors, scene=scene)
                 
+            elif object_type == "smpl_mesh":
+                import torch
+                if "device" not in tools or "smpl_model" not in tools:
+                    logger.warning(f"SMPL model not loaded, skipping SMPL object {name}")
+                    continue
+                device = tools["device"]
+                smpl_model = tools["smpl_model"]
+
+                if "betas" not in values:
+                    betas = torch.zeros(10, device=device)
+                else:
+                    betas = torch.tensor(values["betas"], device=device)
+                    if len(betas) != 10:
+                        logger.warning(f"Invalid SMPL object {name}, betas must be of length 10, skipping")
+                        continue
+                betas = betas.unsqueeze(0)
+
+                if "thetas" not in values:
+                    logger.warning(f"Invalid SMPL object {name}, no thetas found, skipping")
+                    continue
+                thetas = torch.tensor(values["thetas"], device=device)
+                if len(thetas) != 72:
+                    logger.warning(f"Invalid SMPL object {name}, thetas must be of length 72, skipping")
+                    continue
+                thetas = thetas.unsqueeze(0)
+
+                if "translation" not in values:
+                    translation = torch.zeros(3, device=device)
+                else:
+                    translation = torch.tensor(values["translation"], device=device)
+                    if len(translation) != 3:
+                        logger.warning(f"Invalid SMPL object {name}, translation must be of length 3, skipping")
+                        continue
+                translation = translation.unsqueeze(0)
+
+                vertices = smpl_model.forward(betas, global_orient=thetas[:, :3], body_pose=thetas[:, 3:]).vertices
+                vertices = vertices + translation
+                vertices = vertices[0].detach().cpu().numpy()
+
+                colors = __parse_vertex_colors(values, 6890)
+                scene = show_mesh(vertices, smpl_model.faces, vertex_color=colors, scene=scene)
+
             elif object_type == "message":
                 text = str({k: v for k, v in values.items() if k != "type"})
                 scene_dict[name] = text

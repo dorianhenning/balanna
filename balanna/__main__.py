@@ -77,7 +77,7 @@ def main(args):
 
     elif args.mode == "json":
         for k, file in enumerate(file_iterator):
-            scene_dict = load_scene_from_json(file)
+            scene_dict = load_scene_from_json(file, smpl_model=args.smpl_model)
             scenes.append(scene_dict)
 
     else:
@@ -107,6 +107,7 @@ if __name__ == '__main__':
     parser.add_argument("--show-progress", action="store_true", help="Show progress bar.")
     parser.add_argument("--n", type=int, help="Number of frames to display", default=None)
     parser.add_argument("--downsample", type=int, help="Downsample factor", default=1)
+    parser.add_argument("--smpl-model", type=pathlib.Path, help="SMPL model for json processing, if needed.")
     parser.add_argument("--debug", action="store_true", help="debug mode")
     args_ = parser.parse_args()
 
