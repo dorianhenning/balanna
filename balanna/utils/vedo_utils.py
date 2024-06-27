@@ -34,7 +34,10 @@ def trimesh_scene_2_vedo(scene: trimesh.Scene, label: Optional[str] = None, use_
                 m_vedo: vedo.Mesh = vedo.trimesh2vedo(m)
                 if m.visual.kind == "vertex":
                     face_colors = trimesh.visual.color.vertex_to_face_color(m.visual.vertex_colors, m.faces)
-                    m_vedo.cellIndividualColors(face_colors)
+                    try:
+                        m_vedo.cellcolors = face_colors  # new vedo API
+                    except AttributeError:
+                        m_vedo.cellIndividualColors(face_colors)  # old vedo API
 
             meshes_vedo.append(m_vedo)
 
