@@ -171,6 +171,10 @@ def display_dataset_custom(
         store_directory: path to directory storing scene pickle files.
         debug: printing debug information.
     """
+    if len(scenes) == 0:
+        logger.warning("No scenes to display.")
+        return
+
     app = Qt.QApplication([])
     window = main_window_class(
         scenes=scenes,
