@@ -169,6 +169,12 @@ def load_scene_from_json(file_path: Path, **kwargs):
     # Prepare the kwargs, if any.
     tools = __process_kwargs(**kwargs)
 
+    drone_mesh = trimesh.exchange.dae.load_collada("/usr/wiss/sas/Desktop/firefly.dae")
+    drone_vertices = drone_mesh['geometry']['shape0-lib']['vertices']
+    drone_mesh = trimesh.Trimesh(drone_mesh['geometry']['shape0-lib']['vertices'], 
+                                 drone_mesh['geometry']['shape0-lib']['faces'], 
+                                 vertex_normals=drone_mesh['geometry']['shape0-lib']['vertex_normals'])
+
     # Process the data. Iterate through the json objects and call the respective visualization
     # functions, depending on the object type.
     scene_dict = dict()
@@ -192,6 +198,10 @@ def load_scene_from_json(file_path: Path, **kwargs):
                 transform = __parse_transform(values)
                 if transform is None:
                     continue
+                if name == "x0":
+                    vertex_colors = np.zeros((drone_mesh.vertices.shape[0], 3))
+                    scene = show_mesh(drone_mesh.vertices, drone_mesh.faces, vertex_color=vertex_colors, 
+                                      scene=scene, transform=transform)
                 scene = show_axis(transform, name=name, scene=scene)
 
             elif object_type == "capsule":
