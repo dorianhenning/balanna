@@ -90,7 +90,9 @@ def main(args):
             if "scene" not in scene_dict:
                 logger.warning("No scene found in scene_dict, not adding ground plane.")
                 continue
-            scene_dict['scene'] = show_grid(scene=scene_dict['scene'])
+            scene_dict['scene'] = show_grid(scene=scene_dict['scene'], 
+                                            xy_min=-args.ground_plane_xy, 
+                                            xy_max=args.ground_plane_xy)
 
     return scenes
 
@@ -108,6 +110,7 @@ if __name__ == '__main__':
     parser.add_argument("--n", type=int, help="Number of frames to display", default=None)
     parser.add_argument("--downsample", type=int, help="Downsample factor", default=1)
     parser.add_argument("--smpl-model", type=pathlib.Path, help="SMPL model for json processing, if needed.")
+    parser.add_argument("--ground-plane-xy", type=float, help="Ground plane xy size", default=10)
     parser.add_argument("--debug", action="store_true", help="debug mode")
     args_ = parser.parse_args()
 
