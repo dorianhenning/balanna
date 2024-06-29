@@ -3,6 +3,7 @@ import numpy as np
 import pathlib
 import pickle as pkl
 import sys
+import traceback
 
 from loguru import logger
 
@@ -26,7 +27,7 @@ def main(args):
     if args.directory.is_file():
         files = [args.directory]
     else:
-        if args.mode == "json":
+        if args.mode in ["json", "json2ply"]:
             suffix = ".json"
         elif args.mode in ["pointcloud", "heatmap3d"]:
             suffix = ".txt"
@@ -95,6 +96,20 @@ def main(args):
             scene_dict = load_scene_from_json(file, **kwargs)
             scenes.append(scene_dict)
 
+    elif args.mode == "json2ply":
+        from trimesh.exchange.ply import export_ply
+
+        for k, file in enumerate(file_iterator):
+            scene_dict = load_scene_from_json(file, smpl_model=args.smpl_model)
+            scene = scene_dict["scene"]
+            with open(file.with_suffix(".ply"), "wb") as f:
+                for _, node in scene.geometry.items():
+                    try:
+                        f.write(export_ply(node))
+                    except Exception as e:
+                        logger.error(f"Error exporting node {node} to ply: {e}")
+                        logger.debug(traceback.format_exc())
+
     else:
         raise ValueError(f"Invalid displaying mode {args.mode}")
 
@@ -114,7 +129,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=["pointcloud", "heatmap3d", "scenes", "json"])
+    parser.add_argument("mode", choices=["pointcloud", "heatmap3d", "scenes", "json", "json2ply"])
     parser.add_argument("directory", type=pathlib.Path, help="Data directory or file")
     parser.add_argument("--fps", type=int, help="displaying fps", default=10)
     parser.add_argument(

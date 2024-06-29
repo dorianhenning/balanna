@@ -11,6 +11,9 @@ from pathlib import Path
 from scipy.spatial.transform import Rotation
 from typing import Dict, List, Optional, Tuple
 
+import trimesh.exchange
+import trimesh.exchange.dae
+
 from balanna.components import (
     show_trajectory,
     show_axis,
@@ -157,7 +160,7 @@ def __process_kwargs(**kwargs):
     output = dict()
     if "smpl_model" in kwargs.keys():
         smpl_model_path = kwargs["smpl_model"]
-        logger.info(f"Loading SMPL model from {smpl_model_path}")
+        logger.debug(f"Loading SMPL model from {smpl_model_path}")
         import torch
         import smplx
 
