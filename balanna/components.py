@@ -14,6 +14,7 @@ __all__ = [
     "show_ellipsoid",
     "show_plane",
     "show_mesh",
+    "show_trimesh",
     "show_grid",
     "show_point_cloud",
     "show_trajectory",
@@ -22,7 +23,7 @@ __all__ = [
     "show_axes",
     "show_sphere",
     "show_capsule",
-    "show_cylinder"
+    "show_cylinder",
 ]
 
 
@@ -36,7 +37,7 @@ def show_box_w_transform(
     transform: np.ndarray,
     color: RGBorRGBAType = (120, 120, 120),
     name: Optional[str] = None,
-    scene: Optional[trimesh.Scene] = None
+    scene: Optional[trimesh.Scene] = None,
 ):
     """Create a 3D box with the given transformation matrix to the plane coordinate frame (normal = z axis).
 
@@ -52,7 +53,7 @@ def show_box_w_transform(
         raise ValueError(f"Invalid extents, expected (3,), got {len(extents)}")
     if transform.shape != (4, 4):
         raise ValueError(f"Expected transformation matrix of shape (4, 4), got {transform.shape}")
-   
+
     if scene is None:
         scene = trimesh.Scene()
     color_uint8 = np.array(color, dtype=np.uint8)
@@ -62,7 +63,7 @@ def show_box_w_transform(
 
     scene.add_geometry(box)
     return scene
-    
+
 
 def show_plane(
     normal: np.ndarray,
@@ -71,7 +72,7 @@ def show_plane(
     extent_z: float = 0.01,
     color: RGBorRGBAType = (120, 120, 120),
     name: Optional[str] = None,
-    scene: Optional[trimesh.Scene] = None
+    scene: Optional[trimesh.Scene] = None,
 ):
     """Create a 3D plane as a flat 3D box with the normal vector and a point on the plane.
 
@@ -99,10 +100,9 @@ def show_plane(
     extents = (extent_xy, extent_xy, extent_z)
     return show_box_w_transform(extents, transform=T, name=name, color=color, scene=scene)
 
+
 def show_box_w_aabb(
-    aabb: np.ndarray,
-    name: Optional[str] = None,
-    scene: Optional[trimesh.Scene] = None
+    aabb: np.ndarray, name: Optional[str] = None, scene: Optional[trimesh.Scene] = None
 ):
     """Create a 3D box with the min and max corner.
 
@@ -113,7 +113,7 @@ def show_box_w_aabb(
     """
     if aabb.shape != (2, 3):
         raise ValueError(f"Invalid aabb shape, expected (2, 3), got {aabb.shape}")
-   
+
     if scene is None:
         scene = trimesh.Scene()
 
@@ -129,7 +129,7 @@ def show_mesh(
     name: Optional[str] = None,
     scene: Optional[trimesh.Scene] = None,
     face_color: Optional[np.ndarray] = None,
-    vertex_color: Optional[np.ndarray] = None
+    vertex_color: Optional[np.ndarray] = None,
 ) -> trimesh.Scene:
     """Create a mesh from vertices and faces and add it to the scene.
 
@@ -142,13 +142,12 @@ def show_mesh(
         face_color: face colors (F, 3).
         vertex_color: vertex colors (N, 3/4).
     """
-    if vertex_color is not None and vertex_color.shape[:-1] != vertices.shape[:-1]:
-        raise ValueError(f"Invalid vertex colors, must be {vertices.shape}, got {vertex_color.shape}")
+    if vertex_color is not None and vertex_color.shape[0] != vertices.shape[0]:
+        raise ValueError(
+            f"Invalid vertex colors, must be {vertices.shape}, got {vertex_color.shape}"
+        )
     if vertex_color is not None and face_color is not None:
-        raise ValueError(f"Cannot set both vertex and face color")
-
-    if scene is None:
-        scene = trimesh.Scene()
+        raise ValueError("Cannot set both vertex and face color")
 
     mesh = trimesh.Trimesh(vertices, faces)
     if face_color is not None:
@@ -158,8 +157,30 @@ def show_mesh(
     else:
         mesh.visual.face_colors[:, :3] = [224, 120, 120]
 
-    mesh = mesh.apply_transform(transform)
-    scene.add_geometry(mesh, node_name=name)
+    return show_trimesh(mesh, name, transform, scene, copy_mesh=False)
+
+
+def show_trimesh(
+    mesh: trimesh.Trimesh,
+    name: Optional[str] = None,
+    transform: np.ndarray = np.eye(4),
+    scene: Optional[trimesh.Scene] = None,
+    copy_mesh: bool = True,
+):
+    """Add a trimesh mesh to the scene.
+
+    Args:
+        mesh: trimesh mesh to add.
+        name: scene node name of mesh.
+        transform: transform mesh before adding it to scene (4, 4).
+        scene: scene to add mesh to, if None a new scene will be created.
+        copy_mesh: copy the mesh before adding it to the scene and applying the transform.
+    """
+    if scene is None:
+        scene = trimesh.Scene()
+    mesh_scene = mesh.copy() if copy_mesh else mesh
+    mesh_scene = mesh_scene.apply_transform(transform)
+    scene.add_geometry(mesh_scene, node_name=name)
     return scene
 
 
@@ -172,7 +193,7 @@ def show_grid(
     dark_color: RGBAType = (120, 120, 120),
     light_color: RGBAType = (255, 255, 255),
     transform: np.ndarray = np.eye(4),
-    scene: trimesh.Scene = None
+    scene: trimesh.Scene = None,
 ) -> trimesh.Scene:
     """Create a 2D squared grid in the xy-plane, color it in a chessboard pattern and transform it accordingly.
 
@@ -192,11 +213,13 @@ def show_grid(
 
     num_points_per_row = int((xy_max - xy_min) // resolution) + 1
     w = num_points_per_row - 1
-    num_faces = w ** 2
+    num_faces = w**2
 
     # Compute vertices as 2D mesh-grid in the xy-plane. Set all z components to the given z value.
-    vertices_x, vertices_y = np.meshgrid(np.linspace(xy_min, xy_max, num_points_per_row),
-                                         np.linspace(xy_min, xy_max, num_points_per_row))
+    vertices_x, vertices_y = np.meshgrid(
+        np.linspace(xy_min, xy_max, num_points_per_row),
+        np.linspace(xy_min, xy_max, num_points_per_row),
+    )
     vertices_x = vertices_x.flatten()
     vertices_y = vertices_y.flatten()
     vertices = np.stack([vertices_x, vertices_y, np.ones_like(vertices_x) * z], axis=-1)
@@ -210,10 +233,12 @@ def show_grid(
     for i in range(w):
         for j in range(w):
             # add face in counter-clockwise vertex order.
-            face_ij = (i * num_points_per_row + j,
-                       i * num_points_per_row + j + 1,
-                       (i + 1) * num_points_per_row + j + 1,
-                       (i + 1) * num_points_per_row + j)
+            face_ij = (
+                i * num_points_per_row + j,
+                i * num_points_per_row + j + 1,
+                (i + 1) * num_points_per_row + j + 1,
+                (i + 1) * num_points_per_row + j,
+            )
             faces.append(face_ij)
 
             # if even number of elements in row: at beginning of row, swap colors.
@@ -238,7 +263,7 @@ def show_point_cloud(
     colors: Optional[np.ndarray] = None,
     name: Optional[str] = None,
     point_size: float = 4,
-    scene: Optional[trimesh.Scene] = None
+    scene: Optional[trimesh.Scene] = None,
 ) -> trimesh.Scene:
     """Add vertices as trimesh point cloud to the scene.
 
@@ -271,7 +296,7 @@ def show_trajectory(
     trajectory: np.ndarray,
     colors: Union[RGBorRGBAType, np.ndarray] = (255, 0, 0),
     fade_out: bool = False,
-    scene: Optional[trimesh.Scene] = None
+    scene: Optional[trimesh.Scene] = None,
 ) -> trimesh.Scene:
     """Add a colored trajectory to the scene
 
@@ -304,7 +329,9 @@ def show_trajectory(
         alpha = colors[-1] if len(colors) == 4 else 255
         colors_rgb = colors[:3]
 
-        alphas = [alpha * ((k + 2) / num_points) if fade_out else alpha for k in range(num_points - 1)]
+        alphas = [
+            alpha * ((k + 2) / num_points) if fade_out else alpha for k in range(num_points - 1)
+        ]
         entity_colors = [(*colors_rgb, alphas[k]) for k in range(num_points - 1)]
 
     elif isinstance(colors, np.ndarray):
@@ -317,7 +344,9 @@ def show_trajectory(
 
         if colors.shape[1] == 3:
             colors_rgb = colors
-            alphas = [255 *(k + 2) / num_points if fade_out else 255 for k in range(num_points - 1)]
+            alphas = [
+                255 * (k + 2) / num_points if fade_out else 255 for k in range(num_points - 1)
+            ]
         elif colors.shape[1] == 4:
             if fade_out:
                 raise ValueError("Fade out not supported for RGBA colors")
@@ -325,11 +354,16 @@ def show_trajectory(
             alphas = colors[:, 3]
         else:
             raise ValueError(f"Invalid colors shape, expected (N-1, 3/4), got {colors.shape}")
-        
+
         entity_colors = [(*colors_rgb[k], alphas[k]) for k in range(num_points - 1)]
 
     # The vertices must be copied, otherwise the original trajectory might be overwritten afterwards.
-    path = trimesh.path.Path3D(entities=entities, vertices=trajectory.copy(), colors=entity_colors, process=False)
+    path = trimesh.path.Path3D(
+        entities=entities,
+        vertices=trajectory.copy(),
+        colors=entity_colors,
+        process=False,
+    )
     scene.add_geometry(path)
     return scene
 
@@ -337,7 +371,7 @@ def show_trajectory(
 def show_camera(
     transform: np.ndarray,
     name: Optional[str] = None,
-    scene: Optional[trimesh.Scene] = None
+    scene: Optional[trimesh.Scene] = None,
 ) -> trimesh.Scene:
     """Load camera mesh and transform it to given pose.
 
@@ -352,7 +386,9 @@ def show_camera(
         raise ValueError(f"Expected single transformation matrix, got {transform.shape}")
     script_path = os.path.basename(os.path.dirname(__file__))
     cam_mesh_path = os.path.join(script_path, "..", "meshes", "cam_z.obj")
-    cam_mesh = trimesh.load_mesh(cam_mesh_path)  # already in camera orientation (z forward, x right, y down)
+    cam_mesh = trimesh.load_mesh(
+        cam_mesh_path
+    )  # already in camera orientation (z forward, x right, y down)
     cam_mesh = cam_mesh.apply_transform(transform)
     scene.add_geometry(cam_mesh, node_name=name)
     return scene
@@ -362,7 +398,7 @@ def show_axis(
     transform: np.ndarray,
     name: Optional[str] = None,
     size: float = 0.06,
-    scene: Optional[trimesh.Scene] = None
+    scene: Optional[trimesh.Scene] = None,
 ) -> trimesh.Scene:
     """Add coordinate axis as trimesh mesh to the scene.
 
@@ -376,7 +412,7 @@ def show_axis(
         scene = trimesh.Scene()
     if transform.shape != (4, 4):
         raise ValueError(f"Expected single transformation matrix, got {transform.shape}")
-    axis_mesh = trimesh.creation.axis(size, transform=transform, axis_radius=size/3)
+    axis_mesh = trimesh.creation.axis(size, transform=transform, axis_radius=size / 3)
     scene.add_geometry(axis_mesh, node_name=name)
     return scene
 
@@ -384,7 +420,7 @@ def show_axis(
 def show_axes(
     transforms: Union[List[np.ndarray], np.ndarray],
     sizes: Optional[List[float]] = None,
-    scene: Optional[trimesh.Scene] = None
+    scene: Optional[trimesh.Scene] = None,
 ):
     """Add coordinate axes for multiple frames to the scene.
 
@@ -401,11 +437,11 @@ def show_axes(
 
 
 def show_sphere(
-    center: np.ndarray, 
-    radius: float, 
-    color: RGBorRGBAType, 
+    center: np.ndarray,
+    radius: float,
+    color: RGBorRGBAType,
     scene: Optional[trimesh.Scene] = None,
-    count: Optional[Tuple[int, int]] = None
+    count: Optional[Tuple[int, int]] = None,
 ) -> trimesh.Scene:
     """Add a sphere to the scene.
 
@@ -425,7 +461,7 @@ def show_sphere(
 
     sphere = trimesh.creation.uv_sphere(radius=radius, count=count)
     color_uint8 = np.array(color, dtype=np.uint8)
-    
+
     sphere.visual.face_colors = np.repeat(color_uint8[None, :], len(sphere.faces), axis=0)
     sphere.apply_translation(center)
 
@@ -437,11 +473,11 @@ def show_ellipsoid(
     center: np.ndarray,
     radii: np.ndarray,
     color: RGBorRGBAType,
-    scene: Optional[trimesh.Scene] = None, 
-    count: Optional[Tuple[int, int]] = None
+    scene: Optional[trimesh.Scene] = None,
+    count: Optional[Tuple[int, int]] = None,
 ) -> trimesh.Scene:
     """Add an ellipsoid to the scene.
-    
+
     Args:
         center: ellipsoid center coordinates (3).
         radii: ellipsoid radii (3).
@@ -457,7 +493,7 @@ def show_ellipsoid(
         raise ValueError(f"Invalid ellipsoid radii shape, expected (3,), got {radii.shape}")
     if count is not None and (count[0] < 3 or count[1] < 3):
         raise ValueError(f"Invalid ellipsoid count {count}, must be >= 3")
-    
+
     if count is None:
         count = (20, 20)
     nu, nv = count
@@ -490,12 +526,12 @@ def show_ellipsoid(
 
 
 def show_capsule(
-    p1: np.ndarray, 
-    p2: np.ndarray, 
-    radius: float, 
-    color: RGBorRGBAType, 
+    p1: np.ndarray,
+    p2: np.ndarray,
+    radius: float,
+    color: RGBorRGBAType,
     scene: Optional[trimesh.Scene] = None,
-    count: Optional[Tuple[int, int]] = None
+    count: Optional[Tuple[int, int]] = None,
 ) -> trimesh.Scene:
     """Add a capsule to the scene.
 
@@ -534,9 +570,11 @@ def show_capsule(
     v = np.cross(z_axis, dp_normed)
     s = np.linalg.norm(v)
     c = np.dot(z_axis, dp_normed)
-    vx = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])  # skew-symmetric matrix of v
+    vx = np.array(
+        [[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]]
+    )  # skew-symmetric matrix of v
 
-    Rc = np.eye(3) + vx + np.matmul(vx, vx) * (1 - c) / (s ** 2 + 1e-6)  # Rodrigues formula
+    Rc = np.eye(3) + vx + np.matmul(vx, vx) * (1 - c) / (s**2 + 1e-6)  # Rodrigues formula
     center = p1 + dp / 2  # equals P
 
     Tz = np.eye(4)
@@ -547,7 +585,9 @@ def show_capsule(
 
     # Add color to capsule.
     color_uint8 = np.array(color, dtype=np.uint8)
-    capsule_mesh.visual.face_colors = np.repeat(color_uint8[None, :], len(capsule_mesh.faces), axis=0)
+    capsule_mesh.visual.face_colors = np.repeat(
+        color_uint8[None, :], len(capsule_mesh.faces), axis=0
+    )
 
     scene.add_geometry(capsule_mesh)
     return scene
@@ -559,7 +599,7 @@ def show_cylinder(
     height: float,
     color: RGBorRGBAType,
     scene: Optional[trimesh.Scene] = None,
-    count: Optional[int] = None
+    count: Optional[int] = None,
 ) -> trimesh.Scene:
     """Add a cylinder to the scene.
 
@@ -580,11 +620,15 @@ def show_cylinder(
     if count is not None and count < 3:
         raise ValueError(f"Invalid cylinder count {count}, must be >= 3")
 
-    cylinder_mesh = trimesh.creation.cylinder(radius=radius, height=height, transform=T, count=count)
+    cylinder_mesh = trimesh.creation.cylinder(
+        radius=radius, height=height, transform=T, count=count
+    )
 
     # Add color to cylinder.
     color_uint8 = np.array(color, dtype=np.uint8)
-    cylinder_mesh.visual.face_colors = np.repeat(color_uint8[None, :], len(cylinder_mesh.faces), axis=0)
+    cylinder_mesh.visual.face_colors = np.repeat(
+        color_uint8[None, :], len(cylinder_mesh.faces), axis=0
+    )
 
     scene.add_geometry(cylinder_mesh)
     return scene

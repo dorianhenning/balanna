@@ -12,21 +12,23 @@ from scipy.spatial.transform import Rotation
 from typing import Dict, List, Optional, Tuple
 
 from balanna.components import (
-    show_trajectory, 
-    show_axis, 
-    show_capsule, 
+    show_trajectory,
+    show_axis,
+    show_capsule,
     show_cylinder,
-    show_ellipsoid, 
+    show_ellipsoid,
     show_mesh,
+    show_trimesh,
     show_plane,
-    show_sphere, 
-    show_point_cloud, 
-    RGBorRGBAType
+    show_sphere,
+    show_point_cloud,
+    RGBorRGBAType,
 )
 
 
-def __parse_colors(json_dict: Dict[str, List], key: str = "color", default: Tuple[int, int, int] = (255, 0, 0)
-                   ) -> RGBorRGBAType:
+def __parse_colors(
+    json_dict: Dict[str, List], key: str = "color", default: Tuple[int, int, int] = (255, 0, 0)
+) -> RGBorRGBAType:
     if key not in json_dict:
         logger.debug(f"Color not found, using default color {default} using key {key}")
         return default
@@ -63,14 +65,18 @@ def __parse_pose(json_dict: Dict[str, List]) -> Optional[np.ndarray]:
     if "orientation" in json_dict.keys():
         orientation = np.array(json_dict["orientation"])
         if len(orientation) != 4:
-            logger.debug(f"Invalid poses element, got invalid `orientation` array {orientation}, "
-                         f"expected quaternion")
+            logger.debug(
+                f"Invalid poses element, got invalid `orientation` array {orientation}, "
+                f"expected quaternion"
+            )
             return None
     elif "orientationRPY" in json_dict.keys():
         orientation_rpy = np.array(json_dict["orientationRPY"])
         if len(orientation_rpy) != 3:
-            logger.debug(f"Invalid poses element, got invalid `orientationRPY` array {orientation_rpy}, "
-                         f"expected roll-pitch-yaw")
+            logger.debug(
+                f"Invalid poses element, got invalid `orientationRPY` array {orientation_rpy}, "
+                f"expected roll-pitch-yaw"
+            )
             return None
         orientation = Rotation.from_euler("XYZ", orientation_rpy, degrees=False).as_quat()
     else:
@@ -154,10 +160,27 @@ def __process_kwargs(**kwargs):
         logger.info(f"Loading SMPL model from {smpl_model_path}")
         import torch
         import smplx
+
         # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         device = torch.device("cpu")
         output["smpl_model"] = smplx.SMPL(smpl_model_path, batch_size=1).to(device)
         output["device"] = device
+
+    if "frame_meshes" in kwargs.keys():
+        frame_meshes = kwargs["frame_meshes"]
+        logger.info(f"Loading frame meshes from {frame_meshes}")
+        meshes_dict = {}
+        for key, path in frame_meshes:
+            if path in ["cam", "drone"]:  # predefined meshes
+                logger.debug(f"Loading predefined mesh {path}")
+                path = Path(__file__).parent.parent / "meshes" / f"{path}.obj"
+            logger.debug(f"Loading mesh {key} from {path}")
+            try:
+                meshes_dict[key] = trimesh.load_mesh(path)
+            except FileNotFoundError:
+                logger.error(f"Error loading frame mesh {key} from {path}")
+                logger.debug(traceback.format_exc())
+        output["frame_meshes"] = meshes_dict
 
     return output
 
@@ -168,12 +191,6 @@ def load_scene_from_json(file_path: Path, **kwargs):
 
     # Prepare the kwargs, if any.
     tools = __process_kwargs(**kwargs)
-
-    drone_mesh = trimesh.exchange.dae.load_collada("/usr/wiss/sas/Desktop/firefly.dae")
-    drone_vertices = drone_mesh['geometry']['shape0-lib']['vertices']
-    drone_mesh = trimesh.Trimesh(drone_mesh['geometry']['shape0-lib']['vertices'], 
-                                 drone_mesh['geometry']['shape0-lib']['faces'], 
-                                 vertex_normals=drone_mesh['geometry']['shape0-lib']['vertex_normals'])
 
     # Process the data. Iterate through the json objects and call the respective visualization
     # functions, depending on the object type.
@@ -198,11 +215,12 @@ def load_scene_from_json(file_path: Path, **kwargs):
                 transform = __parse_transform(values)
                 if transform is None:
                     continue
-                if name == "x0":
-                    vertex_colors = np.zeros((drone_mesh.vertices.shape[0], 3))
-                    scene = show_mesh(drone_mesh.vertices, drone_mesh.faces, vertex_color=vertex_colors, 
-                                      scene=scene, transform=transform)
                 scene = show_axis(transform, name=name, scene=scene)
+
+                # If requested, add a mesh to the frame.
+                if "frame_meshes" in tools and name in tools["frame_meshes"]:
+                    mesh = tools["frame_meshes"][name]
+                    scene = show_trimesh(mesh, name=name, scene=scene, transform=transform)
 
             elif object_type == "capsule":
                 radius = values.get("radius", None)
@@ -222,7 +240,7 @@ def load_scene_from_json(file_path: Path, **kwargs):
                 radius = values.get("radius", None)
                 if radius is None:
                     logger.warning(f"Invalid sphere object {name}, no radius found, skipping")
-                    continue            
+                    continue
                 center = __parse_position(values, "center")
                 if center is None:
                     logger.warning(f"Invalid sphere object {name}, no center found, skipping")
@@ -255,11 +273,15 @@ def load_scene_from_json(file_path: Path, **kwargs):
                     continue
                 transform = __parse_transform(values)
                 if transform is None:
-                    logger.warning(f"Invalid cylinder object {name}, no transform found, using identity")
+                    logger.warning(
+                        f"Invalid cylinder object {name}, no transform found, using identity"
+                    )
                     transform = np.eye(4)
                 color = __parse_colors(values, "color")
                 count = values.get("count", None)
-                scene = show_cylinder(transform, radius, height, color=color, scene=scene, count=count)
+                scene = show_cylinder(
+                    transform, radius, height, color=color, scene=scene, count=count
+                )
 
             elif object_type == "point_cloud":
                 points = values.get("points", None)
@@ -271,13 +293,15 @@ def load_scene_from_json(file_path: Path, **kwargs):
                 if isinstance(points, str):
                     points_decoded = base64.b64decode(points)
                     num_points = len(points_decoded) // 4
-                    points = list(struct.unpack('f' * num_points, points_decoded))
+                    points = list(struct.unpack("f" * num_points, points_decoded))
                 # If points are not base64 encoded, check if they are a list of lists.
                 elif isinstance(points, list) or isinstance(points, np.ndarray):
                     pass
                 else:
-                    logger.warning(f"Invalid point cloud object {name}, " \
-                                    "points must be a list or base64 encoded, skipping")
+                    logger.warning(
+                        f"Invalid point cloud object {name}, "
+                        "points must be a list or base64 encoded, skipping"
+                    )
                     continue
 
                 points = np.array(points)
@@ -288,7 +312,9 @@ def load_scene_from_json(file_path: Path, **kwargs):
                 colors = np.array(values["colors"]) * 255 if "colors" in values else None
                 point_size = values.get("point_size", 4.0)
                 if point_size < 0.1:
-                    logger.debug(f"Point size {point_size} of point cloud too small, multiplying by 500")
+                    logger.debug(
+                        f"Point size {point_size} of point cloud too small, multiplying by 500"
+                    )
                     point_size *= 500
                 scene = show_point_cloud(points, colors=colors, point_size=point_size, scene=scene)
 
@@ -307,9 +333,10 @@ def load_scene_from_json(file_path: Path, **kwargs):
 
                 colors = __parse_vertex_colors(values, vertices.shape[0])
                 scene = show_mesh(vertices, faces, vertex_color=colors, scene=scene)
-                
+
             elif object_type == "smpl_mesh":
                 import torch
+
                 if "device" not in tools or "smpl_model" not in tools:
                     logger.warning(f"SMPL model not loaded, skipping SMPL object {name}")
                     continue
@@ -321,7 +348,9 @@ def load_scene_from_json(file_path: Path, **kwargs):
                 else:
                     betas = torch.tensor(values["betas"], device=device)
                     if len(betas) != 10:
-                        logger.warning(f"Invalid SMPL object {name}, betas must be of length 10, skipping")
+                        logger.warning(
+                            f"Invalid SMPL object {name}, betas must be of length 10, skipping"
+                        )
                         continue
                 betas = betas.unsqueeze(0)
 
@@ -330,7 +359,9 @@ def load_scene_from_json(file_path: Path, **kwargs):
                     continue
                 thetas = torch.tensor(values["thetas"], device=device)
                 if len(thetas) != 72:
-                    logger.warning(f"Invalid SMPL object {name}, thetas must be of length 72, skipping")
+                    logger.warning(
+                        f"Invalid SMPL object {name}, thetas must be of length 72, skipping"
+                    )
                     continue
                 thetas = thetas.unsqueeze(0)
 
@@ -339,11 +370,15 @@ def load_scene_from_json(file_path: Path, **kwargs):
                 else:
                     translation = torch.tensor(values["translation"], device=device)
                     if len(translation) != 3:
-                        logger.warning(f"Invalid SMPL object {name}, translation must be of length 3, skipping")
+                        logger.warning(
+                            f"Invalid SMPL object {name}, translation must be of length 3, skipping"
+                        )
                         continue
                 translation = translation.unsqueeze(0)
 
-                vertices = smpl_model.forward(betas, global_orient=thetas[:, :3], body_pose=thetas[:, 3:]).vertices
+                vertices = smpl_model.forward(
+                    betas, global_orient=thetas[:, :3], body_pose=thetas[:, 3:]
+                ).vertices
                 vertices = vertices + translation
                 vertices = vertices[0].detach().cpu().numpy()
 
@@ -354,7 +389,7 @@ def load_scene_from_json(file_path: Path, **kwargs):
                 text = str({k: v for k, v in values.items() if k != "type"})
                 scene_dict[name] = text
 
-            elif object_type == "plane": 
+            elif object_type == "plane":
                 if "normal" not in values:
                     logger.warning(f"Invalid plane object {name}, no normal found, skipping")
                     continue
