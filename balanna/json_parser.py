@@ -157,7 +157,7 @@ def __process_kwargs(**kwargs):
     output = dict()
     if "smpl_model" in kwargs.keys():
         smpl_model_path = kwargs["smpl_model"]
-        logger.info(f"Loading SMPL model from {smpl_model_path}")
+        logger.debug(f"Loading SMPL model from {smpl_model_path}")
         import torch
         import smplx
 
