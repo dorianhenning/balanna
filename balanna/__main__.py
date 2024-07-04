@@ -107,7 +107,8 @@ def main(args):
                 continue
             xy_min = -args.ground_plane_xy
             xy_max = args.ground_plane_xy
-            scene_dict["scene"] = show_grid(scene=scene_dict["scene"], xy_min=xy_min, xy_max=xy_max)
+            z_g = args.ground_plane_z
+            scene_dict["scene"] = show_grid(scene=scene_dict["scene"], z=z_g, xy_min=xy_min, xy_max=xy_max)
 
     return scenes
 
@@ -136,6 +137,7 @@ if __name__ == "__main__":
         default=None,
     )
     parser.add_argument("--ground-plane-xy", type=float, help="Ground plane xy size", default=10)
+    parser.add_argument("--ground-plane-z", type=float, help="Ground plane height", default=0.0)
     parser.add_argument(
         "--frame-meshes",
         nargs="+",
